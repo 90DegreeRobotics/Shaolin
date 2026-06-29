@@ -1,7 +1,7 @@
 # Plan: Publish Public README — 2026-06-29 15:16
 
 ## Status
-IN-PROGRESS
+COMPLETED
 
 ## Goal
 Establish `C:\Shaolin` as a valid git repository, attach the public GitHub remote, commit the public-facing documentation, and push it to `origin/main` so the repository front page becomes live.
@@ -30,42 +30,42 @@ Establish `C:\Shaolin` as a valid git repository, attach the public GitHub remot
 ## Steps
 
 ### Step 1 — Inspect publish scope
-- [ ] Action: List tracked candidates and hidden agent folders.
+- [x] Action: List tracked candidates and hidden agent folders.
 - Files touched:
   - none
 - Expected outcome:
   - Know exactly what will and will not be staged.
 
 ### Step 2 — Initialize git custody
-- [ ] Action: Run `git init`, set branch to `main`, set `origin`, and configure local author identity if needed.
+- [x] Action: Run `git init`, set branch to `main`, set `origin`, and configure local author identity if needed.
 - Files touched:
   - `.git`
 - Expected outcome:
   - `C:\Shaolin` becomes a valid git repository attached to the public remote.
 
 ### Step 3 — Stage public documentation only
-- [ ] Action: Stage explicit public Markdown files by pathspec; do not stage `.agents`, `.codex`, or other hidden machinery.
+- [x] Action: Stage explicit public Markdown files by pathspec; do not stage `.agents`, `.codex`, or other hidden machinery.
 - Files touched:
   - git index
 - Expected outcome:
   - Only the intended public documentation is staged.
 
 ### Step 4 — Commit and push
-- [ ] Action: Commit with a docs commit and push to `origin/main`.
+- [x] Action: Commit with a docs commit and push to `origin/main`.
 - Files touched:
   - git history
 - Expected outcome:
   - GitHub repo has the README and linked docs.
 
 ### Step 5 — Verify remote state
-- [ ] Action: Confirm `git status`, `git log -1`, and remote refs.
+- [x] Action: Confirm `git status`, `git log -1`, and remote refs.
 - Files touched:
   - none
 - Expected outcome:
   - Local tree is clean except intentionally untracked hidden/private folders if present, and `origin/main` exists.
 
 ### Step 6 — Close the plan
-- [ ] Action: Mark this plan `COMPLETED`.
+- [x] Action: Mark this plan `COMPLETED`.
 - Files touched:
   - `plan_2026-06-29_1516_publish-public-readme.md`
 - Expected outcome:

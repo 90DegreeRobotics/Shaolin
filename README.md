@@ -11,6 +11,12 @@ It is an offering.
 
 The hope is simple: real knowledge should help a human being stand more fully in their own life. Knowledge illuminates the path. Practice walks it. This project exists for the person who is tired of drifting, tired of being ruled by impulse, tired of knowing what would help and not doing it. It is for the person who needs a clean structure, a daily return, and a way to build themselves without fantasy.
 
+## Non-Affiliation
+
+This project is not affiliated with, endorsed by, or representative of Shaolin Temple, Songshan Shaolin Temple, any Shaolin lineage, any monastery, or any living teacher.
+
+The word Shaolin is used here as a public discipline frame: mind, body, conduct, recovery, and honest daily practice.
+
 ## What This Is
 
 The core document is [1yeartoShaolin.md](1yeartoShaolin.md).
@@ -28,6 +34,18 @@ It is a one-year training manual built around:
 
 The aim is not to pretend to be a monk. The aim is to become harder to knock off center.
 
+## Current Status
+
+Read [STATUS.md](STATUS.md) before treating this as software.
+
+Current truth:
+
+- The manual and Mandarin curriculum exist.
+- The Chirox system is planned architecture, not verified software.
+- No physical-assessment code has been verified in this repository yet.
+- No MediaPipe stance tracker exists here yet.
+- No Chronos ingestion path has been implemented from this repo yet.
+
 ## What This Is Not
 
 This repository is not:
@@ -41,6 +59,8 @@ This repository is not:
 - an AI-generated authority over the body
 
 If you are injured, medically fragile, in severe distress, or dealing with serious mental health conditions, use wisdom first. Get help. Scale the work. The path does not require self-destruction as proof of sincerity.
+
+Read [SAFETY.md](SAFETY.md) before training.
 
 ## The Standard
 
@@ -63,6 +83,8 @@ The principle is simple:
 - The machine may not pretend to be a master.
 
 Any AI used here must serve the training. It must not replace the body, the teacher, or the practitioner's own honesty.
+
+See [ROADMAP.md](ROADMAP.md) for the path from manual corpus to a possible deterministic Chirox proof-of-concept.
 
 ## Mandarin and the Journal
 
@@ -97,13 +119,19 @@ That is the gate.
 ## Current Primary Documents
 
 - [1yeartoShaolin.md](1yeartoShaolin.md) - the main one-year manual
-- [first_30_days.md](first_30_days.md) - early first-month scaffold
-- [Shaolin_Lifestyle_Guide.md](Shaolin_Lifestyle_Guide.md) - lifestyle integration notes
-- [Self_Mastery_Plan.md](Self_Mastery_Plan.md) - earlier 12-month planning scaffold
+- [STATUS.md](STATUS.md) - current truth surface
+- [SAFETY.md](SAFETY.md) - medical, injury, beginner, and no-AI-form-diagnosis boundaries
+- [ROADMAP.md](ROADMAP.md) - phased path from manual to possible deterministic tool
+- [LICENSE.md](LICENSE.md) - documentation license and future software-license intent
 - [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept
 - [Mandarin/README.md](Mandarin/README.md) - Mandarin syllabus, curriculum, calligraphy journal method, and open-source resource map
+- [Archive/README.md](Archive/README.md) - preserved older scaffold drafts
 
-The main manual is the current center. Older scaffold documents may lag behind it and should be treated as supporting notes until reconciled.
+The main manual is the current center. Older scaffold documents have been moved to `Archive/Supporting_Drafts/` and should be treated as context, not current doctrine.
+
+## License
+
+Documentation and curriculum are licensed under [CC BY-SA 4.0](LICENSE.md). Future software is intended to use the MIT License unless a file says otherwise.
 
 ## Why Public
 

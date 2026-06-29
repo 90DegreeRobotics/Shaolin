@@ -1,7 +1,7 @@
 # Plan: Mandarin Journal Curriculum — 2026-06-29 15:50
 
 ## Status
-IN-PROGRESS
+COMPLETED
 
 ## Goal
 Add the pencil-journal method to the main Shaolin manual and create a repository section for learning Mandarin with open-source or openly available resources. The new section should include a syllabus, curriculum, journaling method, and resource map.
@@ -62,14 +62,14 @@ Add the pencil-journal method to the main Shaolin manual and create a repository
   - The section exists, links are present, and the journaling method is discoverable.
 
 ### Step 5 — Commit and push
-- [ ] Action: Stage explicit files, commit, and push to `origin/main`.
+- [x] Action: Stage explicit files, commit, and push to `origin/main`.
 - Files touched:
   - git index/history
 - Expected outcome:
   - The public repo contains the Mandarin and journaling system.
 
 ### Step 6 — Close the plan
-- [ ] Action: Mark this plan `COMPLETED`, commit the plan closure, and push.
+- [x] Action: Mark this plan `COMPLETED`, commit the plan closure, and push.
 - Files touched:
   - `plan_2026-06-29_1550_mandarin-journal-curriculum.md`
 - Expected outcome:

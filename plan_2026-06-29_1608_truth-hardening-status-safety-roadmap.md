@@ -1,7 +1,7 @@
 # Plan: Truth Hardening, Safety, Roadmap — 2026-06-29 16:08
 
 ## Status
-IN-PROGRESS
+COMPLETED
 
 ## Goal
 Harden the public Shaolin repository after review: make current implementation status explicit, pull safety doctrine into a visible file, add a roadmap, add a license notice, add a non-affiliation disclaimer, and move older scaffold documents into an archive/supporting-drafts lane without deleting content.
@@ -76,14 +76,14 @@ Harden the public Shaolin repository after review: make current implementation s
   - Status, safety, roadmap, license, disclaimer, and archive labels are present.
 
 ### Step 6 — Commit and push
-- [ ] Action: Stage explicit files, commit, and push to `origin/main`.
+- [x] Action: Stage explicit files, commit, and push to `origin/main`.
 - Files touched:
   - git index/history
 - Expected outcome:
   - The public repo is hardened on `origin/main`.
 
 ### Step 7 — Close the plan
-- [ ] Action: Mark this plan `COMPLETED`, commit the closure, and push.
+- [x] Action: Mark this plan `COMPLETED`, commit the closure, and push.
 - Files touched:
   - `plan_2026-06-29_1608_truth-hardening-status-safety-roadmap.md`
 - Expected outcome:

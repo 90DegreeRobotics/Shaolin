@@ -13,7 +13,7 @@ The hope is simple: real knowledge should help a human being stand more fully in
 
 ## Non-Affiliation
 
-This project is not affiliated with, endorsed by, or representative of Shaolin Temple, Songshan Shaolin Temple, any Shaolin lineage, any monastery, or any living teacher.
+This project is not affiliated with, endorsed by, or representative of Master Shi Heng Yi, Shaolin Temple Europe, Shaolin Temple, Songshan Shaolin Temple, any Shaolin lineage, any monastery, or any living teacher.
 
 The word Shaolin is used here as a public discipline frame: mind, body, conduct, recovery, and honest daily practice.
 

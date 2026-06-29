@@ -1,0 +1,104 @@
+# Shaolin
+## A Public One-Year Path for Discipline, Health, and Human Betterment
+
+This repository is public on purpose.
+
+Most of my work stays private until it has earned the right to stand in the open. This one is different. There is nothing here that should be hidden behind a gate, sold as a secret, or dressed up as exclusive knowledge. If someone finds this work at the right moment, and it helps them become steadier, healthier, more honest, more disciplined, or more useful to the people around them, then the repository has done its work.
+
+This is not monetization content. It is not a funnel. It is not a claim of mastery.
+
+It is an offering.
+
+The hope is simple: real knowledge should help a human being stand more fully in their own life. Knowledge illuminates the path. Practice walks it. This project exists for the person who is tired of drifting, tired of being ruled by impulse, tired of knowing what would help and not doing it. It is for the person who needs a clean structure, a daily return, and a way to build themselves without fantasy.
+
+## What This Is
+
+The core document is [1yeartoShaolin.md](1yeartoShaolin.md).
+
+It is a one-year training manual built around:
+
+- meditation and emotional honesty
+- Qi Gong and breath-led movement
+- Kung Fu stance work and physical discipline
+- recovery, sleep, food, and injury prevention
+- Daoist non-forcing
+- Confucian conduct, respect, and service
+- daily and weekly measurement through a Dojo Record
+
+The aim is not to pretend to be a monk. The aim is to become harder to knock off center.
+
+## What This Is Not
+
+This repository is not:
+
+- medical advice
+- therapy
+- a substitute for qualified instruction
+- a secret lineage
+- a performance identity
+- a productivity costume
+- an AI-generated authority over the body
+
+If you are injured, medically fragile, in severe distress, or dealing with serious mental health conditions, use wisdom first. Get help. Scale the work. The path does not require self-destruction as proof of sincerity.
+
+## The Standard
+
+This project follows a strict rule: no false mastery.
+
+If something is a draft, it should be called a draft. If something is untested, it should be called untested. If a physical assessment cannot be verified, it should not be presented as truth.
+
+The body is not corrected by hallucination. The body is corrected by attention, repetition, measurement, qualified feedback, and humility.
+
+## The Chirox Principle
+
+[Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) describes a future technical support layer: deterministic measurement for training.
+
+The principle is simple:
+
+- The machine may count.
+- The machine may measure.
+- The machine may remember.
+- The machine may help compare today's practice against yesterday's.
+- The machine may not pretend to be a master.
+
+Any AI used here must serve the training. It must not replace the body, the teacher, or the practitioner's own honesty.
+
+## For the Reader
+
+If you found this by accident, take only what is useful and begin small.
+
+Do not start with a heroic vow. Start with one honest morning:
+
+1. Sit for three minutes.
+2. Stand for one careful stance hold.
+3. Walk without your phone.
+4. Treat one person with deliberate respect.
+5. Write down what happened.
+
+Then return tomorrow.
+
+That is the gate.
+
+## Current Primary Documents
+
+- [1yeartoShaolin.md](1yeartoShaolin.md) - the main one-year manual
+- [first_30_days.md](first_30_days.md) - early first-month scaffold
+- [Shaolin_Lifestyle_Guide.md](Shaolin_Lifestyle_Guide.md) - lifestyle integration notes
+- [Self_Mastery_Plan.md](Self_Mastery_Plan.md) - earlier 12-month planning scaffold
+- [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept
+
+The main manual is the current center. Older scaffold documents may lag behind it and should be treated as supporting notes until reconciled.
+
+## Why Public
+
+Because knowledge that can help people become clearer, stronger, kinder, and more disciplined should not always be locked away.
+
+Because a person can stumble onto the right sentence at the right hour and change direction.
+
+Because the world does not need more hidden systems of self-improvement sold back to wounded people as status.
+
+Because discipline, recovery, humility, and truth are not luxuries.
+
+Because knowledge illuminates the path.
+
+Walk carefully.

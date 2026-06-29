@@ -24,6 +24,7 @@ It is a one-year training manual built around:
 - Daoist non-forcing
 - Confucian conduct, respect, and service
 - daily and weekly measurement through a Dojo Record
+- Mandarin study and calligraphy-linked journaling
 
 The aim is not to pretend to be a monk. The aim is to become harder to knock off center.
 
@@ -63,6 +64,20 @@ The principle is simple:
 
 Any AI used here must serve the training. It must not replace the body, the teacher, or the practitioner's own honesty.
 
+## Mandarin and the Journal
+
+The [Mandarin Study Hall](Mandarin/README.md) is the language and calligraphy lane.
+
+Its core method is simple:
+
+```text
+English thought -> core meaning -> Mandarin phrase -> pinyin -> character -> hand practice
+```
+
+This turns journaling into a governed practice. English records the day. Mandarin distills the meaning. Calligraphy makes the hand carry the lesson.
+
+The goal is not to decorate the path with foreign words. The goal is to learn slowly enough that the words become lived.
+
 ## For the Reader
 
 If you found this by accident, take only what is useful and begin small.
@@ -86,6 +101,7 @@ That is the gate.
 - [Shaolin_Lifestyle_Guide.md](Shaolin_Lifestyle_Guide.md) - lifestyle integration notes
 - [Self_Mastery_Plan.md](Self_Mastery_Plan.md) - earlier 12-month planning scaffold
 - [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept
+- [Mandarin/README.md](Mandarin/README.md) - Mandarin syllabus, curriculum, calligraphy journal method, and open-source resource map
 
 The main manual is the current center. Older scaffold documents may lag behind it and should be treated as supporting notes until reconciled.
 

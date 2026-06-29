@@ -393,6 +393,55 @@ One lesson:
 Tomorrow's minimum:
 ```
 
+### Pencil Journal and Mandarin Calligraphy Method
+
+If freeform journaling feels like fog, do not begin with a blank emotional ocean. Use a small page architecture.
+
+The method is:
+
+1. **English thought:** write the day's truth in plain English.
+2. **Core meaning:** circle one word or phrase that carries the weight.
+3. **Mandarin distillation:** translate that core into Mandarin, pinyin with tones, and one character or short phrase.
+4. **Calligraphy practice:** write the character or phrase 9 times slowly.
+5. **Silent question:** while writing, hold one question: where did this quality appear today?
+
+This turns journaling into a governed practice. English records the lived truth. Mandarin distills the meaning. Calligraphy makes the hand carry the lesson.
+
+Use this page template:
+
+```text
+Date:
+Day number:
+
+Physical truth:
+Emotional truth:
+Conduct truth:
+
+One sentence worth keeping:
+Core word / phrase:
+
+Mandarin:
+Pinyin:
+Character focus:
+
+Calligraphy repetitions:
+What this character asked of me:
+Tomorrow's vow:
+```
+
+Start small. Do not translate your whole soul. Translate one living sentence. Then write one character with attention.
+
+Begin with:
+
+- **道 / dào:** path, way, road, principle.
+- **静 / jìng:** stillness, quiet.
+- **仁 / rén:** humaneness, benevolence.
+- **忍 / rěn:** endurance, restraint, patience.
+- **明 / míng:** brightness, clarity.
+- **行 / xíng:** action, walking, conduct.
+
+Verify translations with a dictionary before treating them as settled. Mandarin is not ornament. Write fewer characters and honor them more.
+
 ### Execution Metrics
 
 - Minutes meditated.
@@ -459,6 +508,8 @@ Start with one book. Do not build a library to avoid practice.
 Mandarin is useful because many key terms flatten in English. Keep this small.
 
 Daily goal: 10 minutes.
+
+The living curriculum for this lane is maintained in [Mandarin/README.md](Mandarin/README.md). Treat it as the study hall: pronunciation, pinyin, characters, spaced repetition, journaling, and open-source resource discipline.
 
 First terms:
 

@@ -1,7 +1,7 @@
 # Plan: Non-Affiliation Name Hardening — 2026-06-29 16:26
 
 ## Status
-IN-PROGRESS
+COMPLETED
 
 ## Goal
 Add Master Shi Heng Yi and Shaolin Temple Europe explicitly to the README non-affiliation sentence for maximum clarity.
@@ -33,14 +33,14 @@ Add Master Shi Heng Yi and Shaolin Temple Europe explicitly to the README non-af
   - The exact names are present.
 
 ### Step 3 — Commit and push
-- [ ] Action: Stage explicit files, commit, and push to `origin/main`.
+- [x] Action: Stage explicit files, commit, and push to `origin/main`.
 - Files touched:
   - git index/history
 - Expected outcome:
   - The hardening patch is public.
 
 ### Step 4 — Close plan
-- [ ] Action: Mark plan `COMPLETED`, commit closure, and push.
+- [x] Action: Mark plan `COMPLETED`, commit closure, and push.
 - Files touched:
   - `plan_2026-06-29_1626_non-affiliation-name-hardening.md`
 - Expected outcome:

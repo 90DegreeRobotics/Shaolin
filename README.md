@@ -17,6 +17,12 @@ This project is not affiliated with, endorsed by, or representative of Shaolin T
 
 The word Shaolin is used here as a public discipline frame: mind, body, conduct, recovery, and honest daily practice.
 
+## Access and Inspiration
+
+Read [ACCESS_AND_INSPIRATION.md](ACCESS_AND_INSPIRATION.md) for the personal reason this repository exists.
+
+Short version: this work was inspired in part by the public teaching presence of Master Shi Heng Yi, but it is not affiliated with him, Shaolin Temple Europe, Shaolin Temple, or any Shaolin lineage. It does not reproduce paid course materials. It exists because access is unequal, and some people need a free, plain-language, safety-first gate into discipline when formal training is not financially or physically reachable.
+
 ## What This Is
 
 The core document is [1yeartoShaolin.md](1yeartoShaolin.md).
@@ -121,6 +127,7 @@ That is the gate.
 - [1yeartoShaolin.md](1yeartoShaolin.md) - the main one-year manual
 - [STATUS.md](STATUS.md) - current truth surface
 - [SAFETY.md](SAFETY.md) - medical, injury, beginner, and no-AI-form-diagnosis boundaries
+- [ACCESS_AND_INSPIRATION.md](ACCESS_AND_INSPIRATION.md) - personal inspiration, access reason, and non-affiliation boundary
 - [ROADMAP.md](ROADMAP.md) - phased path from manual to possible deterministic tool
 - [LICENSE.md](LICENSE.md) - documentation license and future software-license intent
 - [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept

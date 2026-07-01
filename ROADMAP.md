@@ -5,7 +5,7 @@ This roadmap keeps ambition tied to proof. A phase is not complete until its out
 
 ## Phase 0: Public Doctrine and Truth Surfaces
 
-Status: in progress.
+Status: substantially complete (2026-06-30).
 
 Goals:
 
@@ -25,7 +25,9 @@ Done when:
 
 ## Phase 1: Dojo Record Templates
 
-Status: planned.
+Status: done (2026-06-30). Templates ship in `chirox/record/templates/`; ingest
+parses filled templates into validated entries; personal logs stay in git-ignored
+`Dojo/data/`.
 
 Goals:
 
@@ -43,7 +45,9 @@ Done when:
 
 ## Phase 2: Deterministic Stance Timer
 
-Status: planned.
+Status: done (2026-06-30). Superseded by direct deterministic geometry: the
+Dojo Record captures stance duration/pain/notes, and `chirox/vision/schema.py`
+emits a JSON session summary with a schema test.
 
 Goals:
 
@@ -61,7 +65,9 @@ Done when:
 
 ## Phase 3: MediaPipe Proof of Concept
 
-Status: planned.
+Status: geometry done, live-camera run gated (2026-06-30). Pose landmarks map into
+pure, unit-tested stance geometry with explicit uncertainty; `chirox vision` runs
+on webcam or a video file. A live webcam run needs a person on camera.
 
 Goals:
 
@@ -80,7 +86,11 @@ Done when:
 
 ## Phase 4: Chirox Dojo Pipeline
 
-Status: planned.
+Status: substantially complete, multi-camera hardware gated (2026-06-30). The
+pipeline emits deterministic session payloads (duration, knee/spine metrics,
+wobble via flags, uncertainty), separates measurement from interpretation, and
+commits sample outputs. Synchronized multi-camera capture on the physical rig is
+pending hardware; the fusion logic is built and single-source verified.
 
 Goals:
 
@@ -98,7 +108,10 @@ Done when:
 
 ## Phase 5: Chronos Ingestion
 
-Status: planned.
+Status: superseded (2026-07-01). Chirox is self-contained — its own append-only
+Dojo Record, interpretive brain, and wise-sage register. Chronos was a *pattern
+source* for the architecture, not a runtime dependency. No ingestion is needed.
+The remaining honest frontier is the physical multi-camera rig, not an external brain.
 
 Goals:
 

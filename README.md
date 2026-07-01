@@ -46,11 +46,16 @@ Read [STATUS.md](STATUS.md) before treating this as software.
 
 Current truth:
 
-- The manual and Mandarin curriculum exist.
-- The Chirox system is planned architecture, not verified software.
-- No physical-assessment code has been verified in this repository yet.
-- No MediaPipe stance tracker exists here yet.
-- No Chronos ingestion path has been implemented from this repo yet.
+- The manual, the Mandarin lane, the Diet lane, and a public-domain wisdom corpus exist.
+- Chirox is a working, self-contained local system (`chirox/`): deterministic vision,
+  an append-only Dojo Record, a local-model interpretive voice, a wise-sage register with
+  a growth ledger, and a session recorder / visual timeline. 71 passing tests.
+- Deterministic stance measurement uses the MediaPipe Tasks pose landmarker, verified on a
+  real person image.
+- There is one identity: **Master Chirox**. Internal engines are never surfaced as separate
+  voices, and Chirox has no runtime dependency on any other project.
+- Still hardware-gated: a live webcam session and synchronized multi-camera capture on the
+  physical rig. See STATUS.md for the exact line between proven and gated.
 
 ## What This Is Not
 
@@ -132,6 +137,7 @@ That is the gate.
 - [LICENSE.md](LICENSE.md) - documentation license and future software-license intent
 - [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept
 - [Mandarin/README.md](Mandarin/README.md) - Mandarin syllabus, curriculum, calligraphy journal method, and open-source resource map
+- [Diet/README.md](Diet/README.md) - the food-as-training lane: plant-forward pragmatic diet, portioning, timing, and a four-quarter progression
 - [Archive/README.md](Archive/README.md) - preserved older scaffold drafts
 
 The main manual is the current center. Older scaffold documents have been moved to `Archive/Supporting_Drafts/` and should be treated as context, not current doctrine.

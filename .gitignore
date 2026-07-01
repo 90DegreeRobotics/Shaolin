@@ -1,0 +1,23 @@
+# The Dojo Record is private. Never commit the practitioner's logs or config.
+Dojo/data/
+
+# Session video archive (the visual timeline) — large and private.
+Dojo/media/
+
+# Downloaded ML model assets (pose landmarker) — fetched on first use.
+Dojo/models/
+
+# Voice models (Whisper / Piper) — fetched on first use.
+Dojo/voice/
+
+# Public-domain wisdom corpus (raw Gutenberg dumps) — fetched on first use.
+Wisdom/texts/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Local witness artifacts that may contain personal data
+Dojo/witness/*.local.*

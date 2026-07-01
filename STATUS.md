@@ -1,44 +1,84 @@
 # Status
-## Current Truth as of 2026-06-29
+## Current Truth as of 2026-06-30
 
-This repository is currently a public discipline manual and curriculum corpus.
+This repository is a public discipline manual **and** a working first version of
+the Chirox software system.
 
-It is not yet a functioning software system.
+The manual is the center. The software is real but young: its deterministic and
+record-keeping organs are built and tested; its Master voice runs on a local
+model; and two capabilities remain honestly gated on physical hardware.
 
-## What Exists
+## What Exists (built and verified)
 
 - `README.md` establishes the public purpose of the project.
 - `1yeartoShaolin.md` is the current primary manual.
-- `Mandarin/` contains a beginner Mandarin, pinyin, calligraphy, and journaling learning lane.
-- `Chirox_Integration_Plan.md` describes a planned deterministic body-measurement architecture.
-- `SAFETY.md` gathers the medical, injury, and no-AI-form-diagnosis boundaries in one place.
-- `ROADMAP.md` names the path from manual corpus to possible Chirox proof-of-concept.
+- `Mandarin/` contains the Mandarin, pinyin, calligraphy, and journaling lane.
+- `Diet/` is the food-as-training lane (plant-forward pragmatic, four-quarter
+  arc: stabilize → cleanse → sharpen → sustain) that the Master grounds in and cites.
+- `Wisdom/` is a public-domain philosophy corpus (Tao Te Ching, Analects,
+  Dhammapada, Art of War) that Chirox the sage grounds in and cites — never fabricated.
+- `chirox/` is the Python package that implements Chirox:
+  - `calendar.py` — date → day number, phase, week, quarter, checkpoint, weekly-review.
+  - `record/` — an **append-only, hash-chained Dojo Record** (Forever Law) with
+    `verify()` and recorded (never silent) forgetting; the manual's daily,
+    weekly, monthly, and Mandarin templates shipped as fillable files; and an
+    ingest path that parses filled templates into validated entries.
+  - `sentinel.py` — a fail-closed authorization gate (Sentinel Law) that seals
+    every consequential write as evidence before it happens.
+  - `vision/` — **deterministic** stance geometry (Ma Bu + Gong Bu) with an
+    explicit UNCERTAIN gate, general range-of-motion measurement for flowing
+    sequences (e.g. the Eight Brocades — measured, never graded), a session
+    schema, a webcam/video runner and a **session recorder** (video archive +
+    sealed manifest = the visual timeline), and a multi-camera fusion aggregator.
+    Pose tracking uses the **MediaPipe Tasks API** (`PoseLandmarker`). No model
+    touches form assessment.
+  - `master/` — a local-Ollama Master voice (default `qwen2.5:14b-instruct`) that
+    interprets **only from recorded evidence**, with in-voice discernment (the
+    manual's green/red teaching) that informs but never filters. Diet/breath/
+    recovery guidance is grounded in the manual and the Diet lane, quarter-aware.
+    Includes a **wise-sage register** (`sage.py`): grounded philosophical dialogue
+    over the wisdom corpus with a growth ledger (qualitative, not competition).
+  - `wisdom.py` — the sage's RAG over the public-domain corpus (cited, never faked).
+  - `voice.py` — local, sovereign speech: Piper TTS + faster-whisper STT, offline;
+    TTS→STT round-trip verified at 100% on a test phrase.
+  - **One identity: Master Chirox.** Internal engines (reflex, memory, brain, sage,
+    voice) are never surfaced as separate voices; no runtime dependency on any
+    other project.
+  - `cli.py` — `chirox init | today | log | vision | record | timeline | review |
+    debrief | sage | growth | say | verify`.
+- `tests/` — 49 passing unit tests.
+- `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
+  proof artifacts (no personal data).
 
-## What Does Not Exist Yet
+## What Is Honestly Gated (not yet proven)
 
-- No physical-assessment code has been verified in this repository.
-- No `dojo_vision_pipeline.py` exists here yet.
-- No MediaPipe stance tracker exists here yet.
-- No deterministic JSON payload has been emitted by this repo yet.
-- No Chronos ingestion path has been implemented or verified from this repo yet.
-- No UI, app, or dashboard exists here yet.
-
-Any document that implies otherwise is concept or planning material, not proven implementation.
+- **Live webcam session.** The full path — real human → 33 landmarks → Chirox
+  geometry → deterministic verdict — is now verified on a real person *image*
+  (2026-07-01, mean confidence 0.99). A live webcam is the same code path with a
+  live source; the remaining step is the practitioner running an actual session.
+- **Synchronized multi-camera capture on the physical Weatherman rig.** The fusion
+  logic is built and single-source verified; the two-camera live run needs the
+  hardware (two C920s into OBS) and is pending.
+- **Chronos ingestion — no longer a goal.** Chirox is self-contained: its own
+  append-only Dojo Record, interpretive brain, and wise-sage register. Chronos
+  (`c:\chronos`) was a *pattern source* for the architecture, not a runtime
+  dependency and not a voice inside Chirox. There is one identity: Master Chirox.
+- **Tao Te Ching / Analects grounding.** The Master cites the manual only. Those
+  public-domain texts are not present; add them under `corpus/` to widen grounding.
 
 ## Chirox Truth
 
-Chirox is currently an architectural concept:
+Chirox is now a working local system, not only a concept:
 
-- machine as measuring layer
-- deterministic geometry before interpretation
-- no generative AI form diagnosis
-- future JSON output suitable for logging and review
+- machine as deterministic measuring layer (no generative form diagnosis)
+- append-only, tamper-evident record of the year
+- a Master voice bound to recorded evidence, refusing to fabricate
+- fail-closed authority on consequential writes
 
-Until working code, tests, and sample outputs exist in this repository, Chirox must be described as planned.
+It is young. The physical multi-camera rig and live-camera runs are the honest
+frontier. Until those are run on hardware, they are described as gated.
 
 ## Document Authority
-
-The current authority order is:
 
 1. `README.md`
 2. `STATUS.md`
@@ -48,27 +88,11 @@ The current authority order is:
 6. `ROADMAP.md`
 7. supporting and archived drafts
 
-Older scaffold documents may contain useful pieces, but they are not current doctrine unless reconciled into the main manual.
-
-## Current Known Gaps
-
-- Add first public Dojo Record templates.
-- Add root project operating law adapted from Chronos-style truth discipline.
-- Build the smallest deterministic Chirox proof: stance timer before pose tracking.
-- Reconcile remaining concept docs so no file overclaims software status.
-- Decide whether future code lives under `Chirox/`, `src/`, or `Dojo/`.
-
 ## Proof Standard
 
 Do not say a feature works until it has been run and its output inspected.
 
-Do not call a physical-assessment feature real until it has:
-
-- code in the repo
-- a reproducible command
-- sample input or fixture
-- emitted output
-- a documented limitation
-- a test or witness artifact
-
-Manual truth is not software truth.
+Physical-assessment features are real only when they have code, a reproducible
+command, sample input or fixture, emitted output, a documented limitation, and a
+test or witness artifact. Manual truth is not software truth; software truth is
+not hardware truth.

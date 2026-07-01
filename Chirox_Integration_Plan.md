@@ -7,6 +7,27 @@ This document outlines how the sovereign organism architecture of **Chronos** (`
 
 ---
 
+## Implementation Status (2026-06-30)
+
+This document is the concept. The working first version lives in the `chirox/`
+package, and the mapping from the metaphor below to real code is:
+
+- **Chirox reflex / vision determinism** → `chirox/vision/` (pure geometry in
+  `stances.py`, runner in `pipeline.py`, fusion in `multicam.py`). Deterministic,
+  unit-tested, no LLM — as required.
+- **The Dojo Record / Forever Law memory** → `chirox/record/` (append-only,
+  hash-chained Codex with `verify()`).
+- **The Sentinel authority gate** → `chirox/sentinel.py` (fail-closed, sealed).
+- **Chirox's voice (interpretive brain + wise-sage register)** → `chirox/master/`
+  on a local Ollama model, bound to recorded evidence, refusing to diagnose form or
+  fabricate. One identity — internal engines are never surfaced as separate voices.
+
+Honest gates: the live single-camera run needs a person on camera, and
+synchronized multi-camera capture on the physical Weatherman rig needs the
+hardware. See `STATUS.md` and `Dojo/witness/PROOF_2026-06-30.md`.
+
+---
+
 ## 1. The Hardware: The Optical Sensors (Weatherman)
 In Dune lore, Chirox was a repurposed combat mek. In our system, the **Weatherman** studio rig is the physical shell.
 *   **The Greenscreen & Camera:** This is the training floor. The high-quality video feed acts as Chirox's optical sensors, providing a clear, high-contrast environment (greenscreen) to track human movement with zero background interference.
@@ -20,20 +41,28 @@ Therefore, the physical assessment layer of our Chirox cannot be a generative LL
 *   **Hardcoded Physics:** It evaluates stances (like the *Ma Bu* Horse Stance) using absolute vector mathematics. If the knee angle is > 120 degrees, the stance is broken. If the spine deviates from vertical, the form is compromised. 
 *   **Strictly Regulated Mechanism:** There is no "guessing" and no LLM hallucination in this layer. It is a pure, unthinking combat algorithm designed strictly for human conditioning.
 
-## 3. The Ginaz Academy: The Organism Core (Chronos)
-While Chirox handles the unthinking physical collision and measurement, the **Chronos** architecture acts as the Ginaz Academy itself—the overarching structure that records, evaluates, and guides the long-term curriculum.
+## 3. The Ginaz Academy: Chirox's Interpretive Core
 
-*   **The Sentinel (Perception Layer):** The Sentinel constantly ingests the JSON payload outputted by the `dojo_vision_pipeline.py`. It receives the hard data: *"Stance held for 85 seconds. Spine deviation 4 degrees. Failure point: Left knee collapse."*
-*   **The Director (Routing):** The Director takes this physical data and routes it into the Dojo Record.
-*   **Primus (The Core):** Primus acts as the Master, but its domain is strictly confined to the philosophical and the historical. It is heavily RAG-bound to the *1 Year to Shaolin* manual and the foundational texts (*Tao Te Ching*, *The Analects*). Primus takes the deterministic physical data from Chirox and provides the post-session debrief: *"Your physical form collapsed at 85 seconds. Reviewing your emotional audit, your mind was scattered today. Return to the breath tomorrow."*
+> **One identity.** There is a single being — **Master Chirox**. It has internal organs
+> (a deterministic reflex, an append-only memory, an interpretive brain, a wise-sage
+> register, a voice). These are never surfaced as separate personalities. Architecture
+> patterns were borrowed from the neighbor project **Chronos** (`c:\chronos`), but Chronos
+> is a *pattern source*, not a voice inside Chirox and not a runtime dependency.
+
+While Chirox's reflex handles the unthinking physical measurement, Chirox's interpretive core is
+the Ginaz Academy itself — the layer that records, evaluates, and guides the long-term curriculum.
+
+*   **Perception:** Chirox ingests the deterministic JSON from the vision reflex: *"Stance held 85s. Spine deviation 4°. Failure point: left knee collapse."*
+*   **Memory:** It seals that physical truth into the append-only Dojo Record (Forever Law).
+*   **The interpretive brain (`chirox/master/`):** Chirox's voice — confined to the philosophical and historical, RAG-bound to the *1 Year to Shaolin* manual, the Diet lane, and the public-domain wisdom corpus (*Tao Te Ching*, *Analects*, *Dhammapada*, *Art of War*). It takes the deterministic data and gives the debrief: *"Your form collapsed at 85 seconds. Your record shows a scattered mind today. Return to the breath tomorrow."* It never diagnoses form itself, and never fabricates.
 
 ## 4. The Noret Protocol: Pushing the Subroutines
 Just as Jool Noret pushed Chirox's subroutines to build legendary capability, the system is designed to scale with the practitioner.
 *   **Progressive Overload:** As the practitioner's 12-month blueprint advances into Phase 2 and 3, the parameters within `dojo_vision_pipeline.py` will be tightened. The acceptable margin of error for spine deviation will shrink. The required time-under-tension for stances will increase.
-*   **Total Integration:** The Chirox system provides the *Wu* (martial/physical) truth, while Chronos manages the *Chan* (mind) and *Yi* (healing/recovery) truth. 
+*   **Total Integration:** One Chirox holds all three — the *Wu* (martial/physical) truth from the reflex, and the *Chan* (mind) and *Yi* (healing/recovery) truth from the interpretive core and the wise-sage register.
 
 ## Summary of the Integration Loop
 1.  **Action:** The human steps onto the Weatherman greenscreen and initiates a form.
 2.  **Observation (Chirox):** The camera feeds data to the vision pipeline, which mathematically calculates skeletal geometry without AI hallucination.
-3.  **Transmission:** A deterministic JSON payload is sent to Chronos.
-4.  **Evaluation (Ginaz):** Chronos (Primus) logs the physical truth into the Dojo Record, cross-references it with the daily emotional/spiritual audits, and dictates the next phase of training according to the *1 Year to Shaolin* curriculum.
+3.  **Transmission:** A deterministic JSON payload passes to Chirox's interpretive core.
+4.  **Evaluation (Ginaz):** Chirox logs the physical truth into the append-only Dojo Record, cross-references it with the daily audits and vision facts, and guides the next phase of training according to the *1 Year to Shaolin* curriculum.

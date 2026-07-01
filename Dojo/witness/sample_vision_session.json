@@ -1,0 +1,39 @@
+{
+  "stance": "horse",
+  "source": "synthetic-witness (no camera, no personal data)",
+  "started_ts": "2026-06-30T00:00:00+00:00",
+  "ended_ts": "2026-06-30T00:00:43+00:00",
+  "duration_s": 42.5,
+  "frames_evaluated": 86,
+  "frames_uncertain": 6,
+  "mean_confidence": 0.944,
+  "time_in_tolerance_s": 31.88,
+  "metrics_summary": {
+    "left_knee_angle": {
+      "min": 90.0,
+      "mean": 112.5,
+      "max": 180.0
+    },
+    "right_knee_angle": {
+      "min": 90.0,
+      "mean": 112.5,
+      "max": 180.0
+    },
+    "left_back_angle": {
+      "min": 180.0,
+      "mean": 180.0,
+      "max": 180.0
+    },
+    "right_back_angle": {
+      "min": 180.0,
+      "mean": 180.0,
+      "max": 180.0
+    }
+  },
+  "flags_observed": {
+    "stance_too_high": 20
+  },
+  "notes": [
+    "6/86 frames were UNCERTAIN (low visibility) and excluded from the verdict."
+  ]
+}

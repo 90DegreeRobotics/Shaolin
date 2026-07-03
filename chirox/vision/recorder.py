@@ -108,6 +108,7 @@ def record_session(exercise: str, source=0, seconds: float | None = None, stance
 
     from chirox.calendar import dojo_day
     from chirox.config import Config
+    from chirox.vision.capture import open_capture
     from chirox.vision.tracker import PoseTracker, draw_points
 
     if stance is not None and stance not in STANCES:
@@ -118,10 +119,7 @@ def record_session(exercise: str, source=0, seconds: float | None = None, stance
     date_str = date.today().isoformat()
     out_path = _video_path(exercise, d.day_number, date_str)
 
-    src = int(source) if str(source).isdigit() else str(source)
-    cap = cv2.VideoCapture(src)
-    if not cap.isOpened():
-        raise RuntimeError(f"could not open video source: {source!r}")
+    cap = open_capture(source)
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480

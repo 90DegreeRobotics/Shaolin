@@ -1,0 +1,341 @@
+:root {
+  --bg: #111315;
+  --panel: #1a1f22;
+  --panel-2: #20272b;
+  --line: #344047;
+  --text: #eef4f2;
+  --muted: #9ca9a8;
+  --green: #42d392;
+  --amber: #f2b84b;
+  --red: #f06b63;
+  --blue: #6bb8ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+/* --- top bar: brand + the toggle row ------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #15191b;
+}
+
+.brand h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+#standing {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.toggles {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.toggle {
+  min-width: 104px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.toggle.open {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.toggle.on {
+  border-color: var(--green);
+  background: #173025;
+  color: var(--green);
+  box-shadow: 0 0 10px rgba(66, 211, 146, 0.35);
+}
+
+.toggle.busy {
+  border-color: var(--amber);
+  background: #33290f;
+  color: var(--amber);
+}
+
+.toggle.danger {
+  border-color: rgba(240, 107, 99, 0.8);
+  background: #341b19;
+  color: var(--red);
+}
+
+/* --- strips: contextual rows under the toggles ----------------------------- */
+
+.strip[hidden] {
+  display: none;  /* explicit display beats the hidden attribute otherwise */
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.strip-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-right: 2px;
+}
+
+.chip {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.sel {
+  border-color: var(--green);
+  background: #173025;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.go {
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid rgba(66, 211, 146, 0.65);
+  border-radius: 6px;
+  background: #173025;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chip-row {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.master-text {
+  flex-basis: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* --- the three camera boxes -------------------------------------------------- */
+
+.cams {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.cam-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  border: 1px solid var(--line);
+  background: #080909;
+}
+
+.cam-box canvas {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  object-fit: contain;
+  background: #050606;
+}
+
+.cam-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(17, 19, 21, 0.82);
+  font-size: 12px;
+}
+
+.cam-label span {
+  color: var(--muted);
+}
+
+.cam-msg {
+  position: absolute;
+  left: 10px;
+  bottom: 34px;
+  max-width: 85%;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(17, 19, 21, 0.84);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cam-msg:empty {
+  display: none;
+}
+
+.cam-assess {
+  min-height: 26px;
+  padding: 5px 9px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip.swap {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 1;
+  height: 28px;
+  font-size: 11px;
+}
+
+/* --- footer: truth + stance + timeline ------------------------------------ */
+
+.deck-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 16px;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: #15191b;
+}
+
+.foot-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.truth {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.truth.measured {
+  color: var(--green);
+  border-color: rgba(66, 211, 146, 0.6);
+}
+
+.truth.uncertain {
+  color: var(--amber);
+  border-color: rgba(242, 184, 75, 0.65);
+}
+
+.truth.no-body {
+  color: var(--muted);
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-mini {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.timeline-mini .t-item {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .cams {
+    grid-template-columns: 1fr;
+  }
+
+  .deck-foot {
+    grid-template-columns: 1fr;
+  }
+
+  .toggles {
+    justify-content: flex-start;
+  }
+}

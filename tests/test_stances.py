@@ -113,4 +113,5 @@ def test_single_camera_names_its_blind_spot():
 def test_default_rig_registry():
     reg = multicam.CameraRegistry.default_rig()
     assert reg.by_role("front").source == 0
-    assert set(reg.sources()) == {"front", "side"}
+    assert reg.by_role("side").source == 2
+    assert set(reg.sources()) == {"front", "side", "extra"}

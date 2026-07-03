@@ -148,11 +148,76 @@ def evaluate_bow_stance(points: dict[str, Point], front: str = "left") -> Stance
     return StanceReading("Bow Stance (Gong Bu)", metrics, flags, assessment, round(conf, 3), False)
 
 
+# --- Du Li Bu (Crane / One-Leg Stance) ------------------------------------------
+
+CRANE_REQUIRED = [LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE]
+
+
+def evaluate_crane_stance(points: dict[str, Point]) -> StanceReading:
+    """Du Li Bu: one knee lifted to hip height or above, standing leg near-straight.
+
+    The lifted leg is inferred, not configured: it is the knee that sits clearly
+    higher (screen y is inverted, so higher = smaller y). Thresholds are honest
+    conditioning heuristics from published stance standards — never captured
+    from a practitioner's body, so a bad day can never become the template.
+    """
+    conf = _confidence(points, CRANE_REQUIRED)
+    if conf < UNCERTAINTY_THRESHOLD:
+        return _uncertain_reading("Crane Stance (Du Li Bu)", CRANE_REQUIRED, conf)
+
+    lk_y, rk_y = points[LEFT_KNEE][1], points[RIGHT_KNEE][1]
+    # normalize by hip-to-ankle length so the numbers do not depend on framing
+    leg_len = abs(points[LEFT_ANKLE][1] - points[LEFT_HIP][1]) or 1e-6
+    knee_gap = abs(lk_y - rk_y) / leg_len
+
+    if knee_gap < 0.15:
+        return StanceReading(
+            "Crane Stance (Du Li Bu)", {"knee_gap": round(knee_gap, 3)}, ["no_lift"],
+            "No leg is lifted — raise one knee toward the chest to enter the crane.",
+            round(conf, 3), False,
+        )
+
+    if lk_y < rk_y:
+        lifted_hip, lifted_knee = LEFT_HIP, LEFT_KNEE
+        sh, sk, sa = RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE
+        lifted = "left"
+    else:
+        lifted_hip, lifted_knee = RIGHT_HIP, RIGHT_KNEE
+        sh, sk, sa = LEFT_HIP, LEFT_KNEE, LEFT_ANKLE
+        lifted = "right"
+
+    standing_knee = angle(points[sh], points[sk], points[sa])
+    # positive = lifted knee above the hip line, in leg-lengths
+    lift = (points[lifted_hip][1] - points[lifted_knee][1]) / leg_len
+
+    metrics = {
+        # numeric so session aggregation can average it (1.0 = left leg lifted);
+        # the mean over a session reads as "fraction of hold spent on the left"
+        "lifted_leg_left": 1.0 if lifted == "left" else 0.0,
+        "standing_knee_angle": round(standing_knee, 2),
+        "knee_lift": round(lift, 3),
+    }
+    flags: list[str] = []
+    if standing_knee < 155:
+        flags.append("standing_leg_bent")
+    if lift < 0.0:
+        flags.append("knee_below_hip")
+
+    messages = {
+        "standing_leg_bent": "Standing leg collapsing — press the root leg long and strong.",
+        "knee_below_hip": "Lifted knee below the hip — draw it higher, toward the chest.",
+    }
+    assessment = "Crane balanced." if not flags else " | ".join(messages[f] for f in flags)
+    return StanceReading("Crane Stance (Du Li Bu)", metrics, flags, assessment, round(conf, 3), False)
+
+
 STANCES = {
     "horse": evaluate_horse_stance,
     "ma_bu": evaluate_horse_stance,
     "bow": evaluate_bow_stance,
     "gong_bu": evaluate_bow_stance,
+    "crane": evaluate_crane_stance,
+    "du_li_bu": evaluate_crane_stance,
 }
 
 

@@ -57,11 +57,10 @@ class DojoVision:
     def run(self, seconds: float | None = None) -> VisionSession:
         import cv2  # imported here so pure geometry stays importable without opencv
 
+        from chirox.vision.capture import open_capture
         from chirox.vision.tracker import PoseTracker, draw_points
 
-        cap = cv2.VideoCapture(self.source)
-        if not cap.isOpened():
-            raise RuntimeError(f"could not open video source: {self.source!r}")
+        cap = open_capture(self.source)
         tracker = PoseTracker()
 
         acc = SessionAccumulator(self.stance, str(self.source))

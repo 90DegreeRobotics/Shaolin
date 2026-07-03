@@ -1,0 +1,1 @@
+"""Local Chirox web cockpit."""

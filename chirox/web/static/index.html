@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chirox</title>
+    <link rel="icon" href="/static/chirox.ico">
+    <!-- versioned asset URLs: an old cached copy can never be reused -->
+    <link rel="stylesheet" href="/static/styles.css?v=4">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>CHIROX</h1>
+        <p id="standing">Day --</p>
+      </div>
+      <nav class="toggles">
+        <button id="mirrorBtn" class="toggle" type="button">MIRROR</button>
+        <button id="earBtn" class="toggle" type="button">EAR</button>
+        <button id="trainBtn" class="toggle" type="button">TRAIN</button>
+        <button id="readBtn" class="toggle" type="button">READ</button>
+        <button id="recordBtn" class="toggle" type="button">RECORD</button>
+        <button id="masterBtn" class="toggle" type="button">MASTER</button>
+        <button id="silenceButton" class="toggle danger" type="button">SILENCE</button>
+      </nav>
+    </header>
+
+    <section id="trainStrip" class="strip" hidden>
+      <span class="strip-label">Drills</span>
+      <button id="drillHorse" class="chip" type="button">Horse</button>
+      <button id="drillBow" class="chip" type="button">Bow</button>
+      <button id="drillCrane" class="chip" type="button">Crane</button>
+      <span class="strip-label">Seconds</span>
+      <button class="chip time-chip" data-sec="30" type="button">30</button>
+      <button class="chip time-chip sel" data-sec="60" type="button">60</button>
+      <button class="chip time-chip" data-sec="90" type="button">90</button>
+      <button id="trainGo" class="go" type="button">BEGIN — HE CALLS THE DRILLS</button>
+      <span id="trainNote" class="note">Pick nothing and Chirox chooses what you have practiced least.</span>
+    </section>
+
+    <section id="readStrip" class="strip" hidden>
+      <span class="strip-label">Library</span>
+      <div id="libraryList" class="chip-row">Loading…</div>
+    </section>
+
+    <section id="recordStrip" class="strip" hidden>
+      <span class="strip-label">Exercise</span>
+      <button class="chip ex-chip sel" data-ex="horse_stance" data-stance="horse" type="button">Horse stance</button>
+      <button class="chip ex-chip" data-ex="bow_stance" data-stance="bow" type="button">Bow stance</button>
+      <button class="chip ex-chip" data-ex="crane_stance" data-stance="crane" type="button">Crane stance</button>
+      <button class="chip ex-chip" data-ex="eight_brocades" data-stance="" type="button">Eight Brocades</button>
+      <button class="chip ex-chip" data-ex="free_training" data-stance="" type="button">Free training</button>
+      <span class="strip-label">Minutes</span>
+      <button class="chip len-chip" data-min="1" type="button">1</button>
+      <button class="chip len-chip" data-min="3" type="button">3</button>
+      <button class="chip len-chip sel" data-min="5" type="button">5</button>
+      <button class="chip len-chip" data-min="10" type="button">10</button>
+      <span class="strip-label">Camera</span>
+      <button class="chip cam-chip sel" data-role="front" type="button">Front</button>
+      <button class="chip cam-chip" data-role="side" type="button">Side</button>
+      <button class="chip cam-chip" data-role="extra" type="button">Extra</button>
+      <button id="recordGo" class="go" type="button">START RECORDING</button>
+      <span id="recordNote" class="note">Video to the private archive; manifest sealed when it completes.</span>
+    </section>
+
+    <section id="masterStrip" class="strip" hidden>
+      <button id="masterGo" class="go" type="button">DEBRIEF — HE SPEAKS</button>
+      <span class="note">For anything else, just talk: "Chirox, …" — every exchange is sealed to the record.</span>
+      <div id="masterText" class="master-text"></div>
+    </section>
+
+    <main class="cams">
+      <article class="cam-box" id="frontBox">
+        <div class="cam-label"><strong>Front</strong><span id="frontConf">--</span></div>
+        <canvas id="frontCanvas" width="640" height="360"></canvas>
+        <div id="frontMsg" class="cam-msg">Ready.</div>
+        <div id="frontAssess" class="cam-assess"></div>
+      </article>
+      <article class="cam-box" id="sideBox">
+        <div class="cam-label"><strong>Side</strong><span id="sideConf">--</span></div>
+        <canvas id="sideCanvas" width="640" height="360"></canvas>
+        <div id="sideMsg" class="cam-msg">Ready.</div>
+        <div id="sideAssess" class="cam-assess"></div>
+      </article>
+      <article class="cam-box" id="extraBox">
+        <div class="cam-label"><strong>Extra</strong><span id="extraConf">--</span></div>
+        <canvas id="extraCanvas" width="640" height="360"></canvas>
+        <div id="extraMsg" class="cam-msg">Standby — the hub carries two live streams (measured).</div>
+        <div id="extraAssess" class="cam-assess"></div>
+        <button id="swapBtn" class="chip swap" type="button">Swap live with Side</button>
+      </article>
+    </main>
+
+    <footer class="deck-foot">
+      <div class="foot-left">
+        <div id="truthState" class="truth no-body">Idle</div>
+        <span class="strip-label">Stance</span>
+        <button class="chip st-chip sel" data-st="horse" type="button">Horse</button>
+        <button class="chip st-chip" data-st="bow" type="button">Bow</button>
+        <button class="chip st-chip" data-st="crane" type="button">Crane</button>
+        <label class="check-row"><input id="mirrorToggle" type="checkbox" checked> Flip</label>
+        <span id="runtime" class="note">0.0s</span>
+        <span id="flags" class="note"></span>
+        <span id="sysCodex" class="note"></span>
+      </div>
+      <div id="timelineList" class="timeline-mini">Loading…</div>
+    </footer>
+
+    <script src="/static/app.js?v=4"></script>
+  </body>
+</html>

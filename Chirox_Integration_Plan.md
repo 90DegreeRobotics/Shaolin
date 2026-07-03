@@ -22,9 +22,10 @@ package, and the mapping from the metaphor below to real code is:
   on a local Ollama model, bound to recorded evidence, refusing to diagnose form or
   fabricate. One identity — internal engines are never surfaced as separate voices.
 
-Honest gates: the live single-camera run needs a person on camera, and
-synchronized multi-camera capture on the physical Weatherman rig needs the
-hardware. See `STATUS.md` and `Dojo/witness/PROOF_2026-06-30.md`.
+Update 2026-07-04: the gates below are closed — the live run is proven on a real
+body with dual-camera capture, and the system has grown an ear, a narrator, a
+conversation register, a training caller, and a one-page control deck. This
+document remains as the original concept; `STATUS.md` is the live truth surface.
 
 ---
 

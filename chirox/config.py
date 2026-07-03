@@ -89,7 +89,7 @@ class Config:
         """Load config from disk, creating a default (and persisting it) if absent."""
         path = path or CONFIG_PATH
         if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
             known = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
             return cls(**known)
         cfg = cls()

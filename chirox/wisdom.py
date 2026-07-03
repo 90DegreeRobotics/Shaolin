@@ -19,10 +19,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # filename -> (display title, Project Gutenberg plain-text URL)
+# IDs verified against the Gutendex catalog 2026-07-03. Daoism, Confucianism,
+# and Buddhism each get real texts — the sage grounds in them, the narrator
+# reads them aloud ("Chirox, read me the tao te ching").
 CORPUS = {
+    # Daoism
     "tao_te_ching.txt": ("Tao Te Ching", "https://www.gutenberg.org/cache/epub/216/pg216.txt"),
+    "chuang_tzu.txt": ("Chuang Tzu", "https://www.gutenberg.org/cache/epub/59709/pg59709.txt"),
+    # Confucianism
     "analects_confucius.txt": ("The Analects of Confucius", "https://www.gutenberg.org/cache/epub/3330/pg3330.txt"),
+    "confucius_mencius.txt": ("Chinese Literature: Confucius and Mencius",
+                              "https://www.gutenberg.org/cache/epub/10056/pg10056.txt"),
+    # Buddhism
     "dhammapada.txt": ("The Dhammapada", "https://www.gutenberg.org/cache/epub/2017/pg2017.txt"),
+    "gospel_of_buddha.txt": ("The Gospel of Buddha", "https://www.gutenberg.org/cache/epub/35895/pg35895.txt"),
+    "light_of_asia.txt": ("The Light of Asia", "https://www.gutenberg.org/cache/epub/8920/pg8920.txt"),
+    # Strategy
     "art_of_war_sunzi.txt": ("The Art of War", "https://www.gutenberg.org/cache/epub/132/pg132.txt"),
 }
 

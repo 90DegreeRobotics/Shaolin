@@ -137,7 +137,7 @@ def _fmt_day(rec: dict) -> str:
     return "  - " + ", ".join(parts)
 
 
-def render_evidence(ctx: MasterContext) -> str:
+def render_evidence(ctx: MasterContext, task: str | None = None) -> str:
     lines: list[str] = []
     lines.append("STANDING")
     lines.append("  " + ctx.standing.headline())
@@ -180,8 +180,19 @@ def render_evidence(ctx: MasterContext) -> str:
 
     if ctx.question:
         lines.append(f"\nTHE STUDENT ASKS: {ctx.question}")
-    lines.append("\nTASK: Speak as Chirox. Give the debrief. End with tomorrow's non-negotiable minimum.")
+    lines.append("\n" + (task or _DEBRIEF_TASK))
     return "\n".join(lines)
+
+
+_DEBRIEF_TASK = "TASK: Speak as Chirox. Give the debrief. End with tomorrow's non-negotiable minimum."
+
+_CONVERSE_TASK = (
+    "TASK: This is a spoken conversation, not a debrief. Answer the student's question "
+    "directly, in Chirox's own voice — two to five sentences of natural speech (your words "
+    "will be read aloud; no headings, no lists, no symbols). Stay grounded: the record and "
+    "the manual are your facts. When they hold no answer, say so plainly, then answer from "
+    "principle and name it as principle. Never fabricate measurements or history."
+)
 
 
 # --- orchestration -------------------------------------------------------------
@@ -201,3 +212,59 @@ def debrief(config: Config | None = None, today: date | None = None, question: s
     curriculum = Curriculum()
     ctx = gather_evidence(config, codex, curriculum, today, question)
     return ollama.chat(system_prompt(), render_evidence(ctx))
+
+
+def conversation_prompt(evidence: str, history: list[tuple[str, str]]) -> str:
+    """Evidence + this sitting's turns → one user message. Pure, testable."""
+    if not history:
+        return evidence
+    lines = ["CONVERSATION SO FAR (this sitting)"]
+    for q, a in history:
+        lines.append(f"  Student: {q}")
+        lines.append(f"  Chirox: {a}")
+    return "\n".join(lines) + "\n\n" + evidence
+
+
+def converse(config: Config | None = None, question: str = "",
+             history: list[tuple[str, str]] | None = None, today: date | None = None) -> str:
+    """A normal conversation with Chirox — one being, one voice, spoken register.
+
+    Same honesty rules as the debrief: the model sees only real evidence, and is
+    told to mark principle as principle when the record holds no answer.
+    """
+    from chirox.config import CODEX_PATH
+    from chirox.record.codex import Codex
+
+    config = config or Config.load()
+    ollama = Ollama(config)
+    ok, reason = ollama.available()
+    if not ok:
+        raise MasterUnavailable(reason)
+
+    codex = Codex(CODEX_PATH)
+    curriculum = Curriculum()
+    ctx = gather_evidence(config, codex, curriculum, today, question)
+    evidence = render_evidence(ctx, task=_CONVERSE_TASK)
+    return ollama.chat(system_prompt(), conversation_prompt(evidence, history or []))
+
+
+def seal_exchange(question: str, answer: str, config: Config | None = None):
+    """Every conversation is part of the record — logged, always, as promised."""
+    from datetime import datetime, timezone
+
+    from chirox.config import CODEX_PATH
+    from chirox.record.codex import Codex
+    from chirox.sentinel import Sentinel
+
+    config = config or Config.load()
+    codex = Codex(CODEX_PATH)
+    sentinel = Sentinel(codex, config)
+    sentinel.init_operator()
+    grant = sentinel.authorize("conversation.append")
+    event = codex.append("conversation", {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "question": question,
+        "answer": answer,
+    })
+    sentinel.consume(grant)
+    return event

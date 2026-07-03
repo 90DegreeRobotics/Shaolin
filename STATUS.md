@@ -1,5 +1,5 @@
 # Status
-## Current Truth as of 2026-06-30
+## Current Truth as of 2026-07-01
 
 This repository is a public discipline manual **and** a working first version of
 the Chirox software system.
@@ -41,30 +41,105 @@ model; and two capabilities remain honestly gated on physical hardware.
   - `wisdom.py` — the sage's RAG over the public-domain corpus (cited, never faked).
   - `voice.py` — local, sovereign speech: Piper TTS + faster-whisper STT, offline;
     TTS→STT round-trip verified at 100% on a test phrase.
+  - `listener.py` — the **always-on ear**: a wake-word daemon (`chirox listen`,
+    autostart via `Launch_Chirox_Voice.ps1 -Install`). Deterministic energy-gate
+    VAD (no model) segments mic audio; Whisper transcribes locally; nothing is
+    acted on without the wake word "Chirox". Routes to a local day answer or the
+    Master (who stays honest when Ollama is down). **Conversation register**
+    (2026-07-03): any spoken question becomes a normal dialogue — the Master's
+    persona over real evidence, spoken-length answers, a rolling few turns of
+    context, and **every exchange sealed to the Codex** as a `conversation`
+    record. First live round verified against local Ollama. Wake round-trip proven by
+    `--self-test` (Piper speaks the wake phrase, Whisper hears it, routing fires);
+    live mic stream + noise-floor calibration verified on the laptop 2026-07-02.
+  - `narrator.py` — **long-form reading aloud** (`chirox narrate`, or by voice:
+    "Chirox, read the manual"). **Read-me mode** ("Chirox, read me the tao te
+    ching"): passage-by-passage in the ear itself — mic off during each passage,
+    a short listening window between passages to stop, and per-book bookmarks
+    (`Dojo/data/reading_progress.json`). The spoken library = repo docs plus the
+    eight wisdom-corpus books, resolved fuzzily (Whisper's "dhamma pada" finds
+    The Dhammapada). Markdown is cleaned to speakable prose, chunked
+    at sentence/paragraph boundaries, and synthesized one chunk ahead of playback
+    so any size text starts speaking in seconds — through one continuous audio
+    stream (no per-chunk stop/start choppiness). **One being, one voice:** the
+    narrator speaks with the Master's voice (`en_GB-alan-medium`); the second
+    voice model was removed 2026-07-03. Verified 2026-07-02: manual → chunks →
+    audio; Whisper round-trip reads back the opening faithfully. The ear stops a reading on "Chirox, stop" and ignores its own
+    narration echo (wake-word suppression while a narration PID is live).
+  - `trainer.py` — **Chirox calls the training** (`chirox train`, or by voice:
+    "Chirox, train me"). He picks drills the Record shows you practice least
+    (deterministic, least-practiced-first), announces each aloud, watches through
+    the mirror, and speaks corrections — only the stance evaluators' own flag
+    messages, rate-limited, never invented. Results are measurements ("62 percent
+    in form; most frequent fault: spine slouching"), sealed as `training_call`.
+    **No pose from the practitioner's body ever becomes a template** — correct
+    form lives in `stances.py` as reviewable code from published standards.
+    Stance catalog now: horse (Ma Bu), bow (Gong Bu), crane (Du Li Bu).
+    Verified 2026-07-03: full loop runs on hardware; with legs out of frame it
+    scored nothing and said so.
+  - `vision/audit.py` — **wireframe accuracy audit**: runs the tracker over a clip
+    (or live grab), writes frames with the 12-joint skeleton and angles drawn on
+    the real image plus `audit.json` (per-angle spread/std = the noise floor on a
+    still hold). First audit 2026-07-02: joints land on the body; occluded joints
+    honestly flagged, no angles fabricated.
   - **One identity: Master Chirox.** Internal engines (reflex, memory, brain, sage,
     voice) are never surfaced as separate voices; no runtime dependency on any
     other project.
   - `cli.py` — `chirox init | today | log | vision | record | timeline | review |
-    debrief | sage | growth | say | verify`.
-- `tests/` — 49 passing unit tests.
+    debrief | sage | growth | say | listen | narrate | train | verify`. The CLI is
+    the developer surface; the practitioner's surfaces are the deck and the voice.
+  - `web/` — a local-only cockpit (FastAPI on `127.0.0.1:8765`, opened as its
+    own app window by the desktop **Chirox** shortcut — no address bar, its own
+    clean browser profile, cache-proof by three layers): live
+    camera + skeleton overlay for front/side views, deterministic stance metrics,
+    and explicit Measured / Uncertain / No-body truth states. As of 2026-07-03 it
+    is the **full control deck** (`web/control.py`) — the practitioner never
+    needs a terminal or a text field: one toggle row (MIRROR · EAR · TRAIN ·
+    READ · RECORD · MASTER · SILENCE) drives everything; choices are chips, not
+    typing. **Three camera boxes**, two live at a time — measured hub truth
+    (2026-07-03): three simultaneous streams collapse to 0 fps even downscaled,
+    two hold 22 fps, so the third box is a one-click swap. The mirror yields
+    the camera automatically when training or recording starts. Verified live
+    in-browser: toggles drive real processes, wireframe and corrections stream
+    on a real body. All camera opens go
+    through `vision/capture.py`, which requests the full 16:9 wide view (1280x720,
+    hardware-verified on the rig's camera 0) instead of the cropped 640x480 default,
+    and picks the backend per device: camera 1 uses DirectShow because Media
+    Foundation takes ~40s to open it (measured 2026-07-03; the C920s stay on MSMF
+    for 30fps). The mirror launcher releases cameras gracefully before replacing
+    a running server.
+- `tests/` — 165 passing unit tests.
 - `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
   proof artifacts (no personal data).
 
 ## What Is Honestly Gated (not yet proven)
 
-- **Live webcam session.** The full path — real human → 33 landmarks → Chirox
-  geometry → deterministic verdict — is now verified on a real person *image*
-  (2026-07-01, mean confidence 0.99). A live webcam is the same code path with a
-  live source; the remaining step is the practitioner running an actual session.
-- **Synchronized multi-camera capture on the physical Weatherman rig.** The fusion
-  logic is built and single-source verified; the two-camera live run needs the
-  hardware (two C920s into OBS) and is pending.
+- ~~Live webcam session.~~ **Closed 2026-07-03:** two cameras streamed live in the
+  deck with the wireframe locked on the practitioner's real body and deterministic
+  corrections displayed ("stance collapsing", "spine slouching") — witnessed
+  in-browser. The front view honestly read Uncertain when only the upper body was
+  framed; the side view honestly read No body. The truth states work under fire.
+- ~~Synchronized multi-camera capture.~~ **Closed within hardware limits 2026-07-03:**
+  front + side ran simultaneously with live pose tracking. The measured ceiling is
+  two streams (three collapse to 0 fps through the hub); a fused two-camera
+  *verdict* (multicam aggregation over a live dual run) remains unexercised.
+- **Voice conversation on the live mic.** The ear daemon runs on hardware, the wake
+  loop passes self-test, and one full conversation round is verified against local
+  Ollama — but a live spoken exchange (practitioner's voice → wake → answer) has
+  not been formally witnessed in a log. One "Chirox, what day is it?" closes this.
+- **Wireframe noise floor.** The audit tool is built and run on archive footage
+  (upper body only). Unmeasured: angle jitter on a full-body still hold — the
+  number that says whether stance angles can track growth. Protocol: full body in
+  frame, hold horse stance still ~20s, run the audit.
 - **Chronos ingestion — no longer a goal.** Chirox is self-contained: its own
   append-only Dojo Record, interpretive brain, and wise-sage register. Chronos
   (`c:\chronos`) was a *pattern source* for the architecture, not a runtime
   dependency and not a voice inside Chirox. There is one identity: Master Chirox.
-- **Tao Te Ching / Analects grounding.** The Master cites the manual only. Those
-  public-domain texts are not present; add them under `corpus/` to widen grounding.
+- ~~Tao Te Ching / Analects grounding.~~ **Closed 2026-07-03:** the wisdom corpus
+  is downloaded and loaded — eight public-domain texts across Daoism (Tao Te
+  Ching, Chuang Tzu), Confucianism (Analects, Confucius & Mencius), Buddhism
+  (Dhammapada, Gospel of Buddha, Light of Asia), and strategy (Art of War) —
+  7,272 passages grounding the sage, all readable aloud via read-me mode.
 
 ## Chirox Truth
 

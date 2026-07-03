@@ -21,3 +21,6 @@ __pycache__/
 
 # Local witness artifacts that may contain personal data
 Dojo/witness/*.local.*
+
+# Local dev-tool configuration — not project content.
+.claude/

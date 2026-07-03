@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from chirox.vision.stances import StanceReading
 
-FRONT, SIDE = "front", "side"
+FRONT, SIDE, EXTRA = "front", "side", "extra"
 
 
 @dataclass(frozen=True)
@@ -34,15 +34,19 @@ class CameraSpec:
 @dataclass
 class CameraRegistry:
     """Maps logical roles to physical sources. Defaults follow the Weatherman rig
-    (direct-USB C920 as the front source); the side camera is a second device."""
+    (direct-USB C920 as the front source); the side camera is a second device.
+
+    This registry is the single source of camera-role truth: the web cockpit's
+    camera list and status defaults derive from it rather than re-declaring it."""
 
     cameras: list[CameraSpec] = field(default_factory=list)
 
     @classmethod
     def default_rig(cls) -> "CameraRegistry":
         return cls([
-            CameraSpec(FRONT, 0, "Desktop C920 (USB) — front"),
-            CameraSpec(SIDE, 1, "Second camera — side"),
+            CameraSpec(FRONT, 0, "Front USB camera"),
+            CameraSpec(SIDE, 2, "Side USB camera"),
+            CameraSpec(EXTRA, 1, "Extra USB camera"),
         ])
 
     def by_role(self, role: str) -> CameraSpec | None:

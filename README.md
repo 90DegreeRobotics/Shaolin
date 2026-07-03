@@ -46,16 +46,21 @@ Read [STATUS.md](STATUS.md) before treating this as software.
 
 Current truth:
 
-- The manual, the Mandarin lane, the Diet lane, and a public-domain wisdom corpus exist.
+- The manual, the Mandarin lane, the Diet lane, and a downloaded public-domain wisdom
+  corpus (eight texts across Daoism, Confucianism, Buddhism, and strategy) exist.
 - Chirox is a working, self-contained local system (`chirox/`): deterministic vision,
-  an append-only Dojo Record, a local-model interpretive voice, a wise-sage register with
-  a growth ledger, and a session recorder / visual timeline. 71 passing tests.
-- Deterministic stance measurement uses the MediaPipe Tasks pose landmarker, verified on a
-  real person image.
-- There is one identity: **Master Chirox**. Internal engines are never surfaced as separate
-  voices, and Chirox has no runtime dependency on any other project.
-- Still hardware-gated: a live webcam session and synchronized multi-camera capture on the
-  physical rig. See STATUS.md for the exact line between proven and gated.
+  an append-only Dojo Record, a local-model interpretive voice with a normal
+  conversation register (every exchange sealed), a wise-sage register with a growth
+  ledger, a session recorder / visual timeline, an always-on wake-word ear, long-form
+  narration, and a spoken training caller. 165 passing tests.
+- The live mirror is proven on hardware: two cameras streaming simultaneously with the
+  wireframe locked on a real body and deterministic corrections displayed, driven
+  entirely from a one-page control deck (no terminal). Verified 2026-07-03.
+- There is one identity — **Master Chirox** — and one voice. Internal engines are never
+  surfaced as separate voices, and Chirox has no runtime dependency on any other project.
+- Still honestly gated: the wireframe noise-floor calibration (a full-body still hold has
+  not been measured yet) and three simultaneous cameras (the USB hub carries two —
+  measured). See STATUS.md for the exact line between proven and gated.
 
 ## What This Is Not
 
@@ -83,7 +88,7 @@ The body is not corrected by hallucination. The body is corrected by attention, 
 
 ## The Chirox Principle
 
-[Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) describes a future technical support layer: deterministic measurement for training.
+[Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) is the original concept document for the technical support layer; the working system now lives in `chirox/` and STATUS.md is its truth surface.
 
 The principle is simple:
 

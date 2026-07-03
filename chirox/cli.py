@@ -27,7 +27,7 @@ from chirox.record.ingest import blank_template, commit_record, ingest_file
 from chirox.record.schema import RECORD_CLASSES
 from chirox.sentinel import Sentinel
 
-RULE = "─" * 64
+RULE = "-" * 64
 LOG_TYPES = {"daily": "daily_checkin", "weekly": "weekly_review",
              "monthly": "monthly_checkpoint", "mandarin": "mandarin_journal"}
 
@@ -228,6 +228,48 @@ def cmd_say(args) -> int:
     return 0
 
 
+def cmd_train(args) -> int:
+    from chirox.trainer import run_training
+
+    result = run_training(
+        source=int(args.source) if str(args.source).isdigit() else args.source,
+        stances=args.stances.split(",") if args.stances else None,
+        seconds=args.seconds, n=args.drills,
+        speak=not args.no_speak, seal=not args.no_seal,
+    )
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_narrate(args) -> int:
+    from chirox.narrator import main as narrator_main
+
+    argv = []
+    if args.path:
+        argv.append(args.path)
+    if args.text:
+        argv += ["--text", args.text]
+    if args.voice:
+        argv += ["--voice", args.voice]
+    if args.pace:
+        argv += ["--pace", str(args.pace)]
+    if args.start:
+        argv += ["--from", str(args.start)]
+    if args.out:
+        argv += ["--out", args.out]
+    return narrator_main(argv)
+
+
+def cmd_listen(args) -> int:
+    from chirox.listener import ChiroxEar, self_test
+
+    if args.self_test:
+        return 0 if self_test() else 1
+    ear = ChiroxEar(device=args.device, speak_replies=not args.no_speak)
+    ear.run(once=args.once)
+    return 0
+
+
 def cmd_sage(args) -> int:
     from chirox.master.brain import Ollama
     from chirox.master.sage import pose_question, reflect, seal_dialogue
@@ -360,6 +402,32 @@ def build_parser() -> argparse.ArgumentParser:
     sg.set_defaults(func=cmd_sage)
 
     sub.add_parser("growth", help="your wisdom growth ledger").set_defaults(func=cmd_growth)
+
+    tr = sub.add_parser("train", help="Chirox calls the drills aloud and measures your form")
+    tr.add_argument("--source", default="0", help="camera index")
+    tr.add_argument("--stances", default=None, help="comma list, e.g. horse,crane (default: Chirox chooses)")
+    tr.add_argument("--seconds", type=int, default=60, help="seconds per drill")
+    tr.add_argument("--drills", type=int, default=3, help="drill count when Chirox chooses")
+    tr.add_argument("--no-speak", action="store_true", help="silent (text only)")
+    tr.add_argument("--no-seal", action="store_true", help="do not seal the session")
+    tr.set_defaults(func=cmd_train)
+
+    na = sub.add_parser("narrate", help="read a long text aloud, audiobook style")
+    na.add_argument("path", nargs="?", help="text or markdown file to read")
+    na.add_argument("--text", default=None, help="read this literal text instead")
+    na.add_argument("--voice", default=None, help="Piper voice override")
+    na.add_argument("--pace", type=float, default=None, help="1.0 conversational; higher = slower")
+    na.add_argument("--from", dest="start", type=int, default=None, metavar="N",
+                    help="resume from chunk N")
+    na.add_argument("--out", default=None, help="render to a WAV instead of playing")
+    na.set_defaults(func=cmd_narrate)
+
+    ls = sub.add_parser("listen", help="the always-on ear: wake word 'Chirox'")
+    ls.add_argument("--device", type=int, default=None, help="input device index")
+    ls.add_argument("--once", action="store_true", help="handle one utterance then exit (mic check)")
+    ls.add_argument("--self-test", action="store_true", help="prove TTS→STT→wake routing, no mic")
+    ls.add_argument("--no-speak", action="store_true", help="print replies instead of speaking")
+    ls.set_defaults(func=cmd_listen)
 
     sy = sub.add_parser("say", help="Chirox speaks a line aloud (voice check)")
     sy.add_argument("text", help="the words to speak")

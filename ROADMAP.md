@@ -65,9 +65,9 @@ Done when:
 
 ## Phase 3: MediaPipe Proof of Concept
 
-Status: geometry done, live-camera run gated (2026-06-30). Pose landmarks map into
-pure, unit-tested stance geometry with explicit uncertainty; `chirox vision` runs
-on webcam or a video file. A live webcam run needs a person on camera.
+Status: done (2026-07-03). Pose landmarks map into pure, unit-tested stance
+geometry with explicit uncertainty. The live run is proven: real cameras, a real
+body, the wireframe locked on, deterministic corrections displayed live.
 
 Goals:
 
@@ -86,11 +86,11 @@ Done when:
 
 ## Phase 4: Chirox Dojo Pipeline
 
-Status: substantially complete, multi-camera hardware gated (2026-06-30). The
-pipeline emits deterministic session payloads (duration, knee/spine metrics,
-wobble via flags, uncertainty), separates measurement from interpretation, and
-commits sample outputs. Synchronized multi-camera capture on the physical rig is
-pending hardware; the fusion logic is built and single-source verified.
+Status: done within hardware limits (2026-07-03). The pipeline emits deterministic
+session payloads (duration, knee/spine metrics, wobble via flags, uncertainty) and
+separates measurement from interpretation. Dual-camera simultaneous capture is
+hardware-verified (~22 fps each at 720p through the USB hub); three simultaneous
+streams collapse to 0 fps — measured, so the deck runs two live with a swap.
 
 Goals:
 
@@ -126,7 +126,29 @@ Done when:
 - sample payload passes validation
 - debrief uses facts without inventing posture claims
 
-## Phase 6: Public Reviewed Release
+## Phase 6: The Embodied Master
+
+Status: built and verified in stages, 2026-07-02 → 2026-07-04.
+
+Delivered, each with tests and a witnessed run:
+
+- always-on wake-word ear (`chirox/listener.py`) — local VAD + Whisper, honest
+  when the model is down, Ctrl+Alt+0 kill switch
+- one voice everywhere (Piper `en_GB-alan-medium`); long-form narration with a
+  reading library (8 wisdom books + repo docs), bookmarks, read-me passage mode
+- normal conversation through the Master's persona, every exchange sealed
+- spoken training caller (`chirox/trainer.py`) — least-practiced drill choice,
+  corrections spoken only from deterministic geometry; form templates live in
+  code from published standards, never captured from the practitioner's body
+- one-page control deck (`chirox/web/`) — toggle row, three camera boxes (two
+  live + swap), chips not typing; launched as its own app window from a desktop
+  shortcut; no terminal anywhere in the practitioner's path
+- wireframe accuracy audit tool (`chirox/vision/audit.py`)
+
+Remaining honest gates: wireframe noise-floor calibration (full-body still hold,
+unmeasured) and any third simultaneous camera (hub limit, measured).
+
+## Phase 7: Public Reviewed Release
 
 Status: planned.
 

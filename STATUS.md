@@ -74,7 +74,18 @@ model; and two capabilities remain honestly gated on physical hardware.
     in form; most frequent fault: spine slouching"), sealed as `training_call`.
     **No pose from the practitioner's body ever becomes a template** — correct
     form lives in `stances.py` as reviewable code from published standards.
-    Stance catalog now: horse (Ma Bu), bow (Gong Bu), crane (Du Li Bu).
+    **The drill catalog is the full reference-chart set (2026-07-04): 19
+    measurable holds** — horse, bow, crane, one-leg stand, drop stance, T
+    stance, parallel ready, narrow meditation, empty/cat, plank, wall sit,
+    squat hold, hollow hold, glute bridge, leg raise, arms raised, wuji
+    standing, horse guard, seated meditation — built on a declarative
+    template engine (`PoseTemplate` rules: angles, above/below, tilt,
+    asymmetric legs) so every entry shares the same uncertainty gate and
+    tests. **Plus 5 counted rep drills** (`vision/reps.py`): squats, pushups,
+    situps, knee raises, jumping jacks — hysteresis-gated cycle counting on
+    pure geometry, each rep spoken aloud as it completes. Dynamic/circular
+    chart work (mobility circles, brocades, cardio drills) stays measured-not-
+    graded via range-of-motion recording, per the manual's own rule.
     Verified 2026-07-03: full loop runs on hardware; with legs out of frame it
     scored nothing and said so.
   - `vision/audit.py` — **wireframe accuracy audit**: runs the tracker over a clip
@@ -108,7 +119,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     Foundation takes ~40s to open it (measured 2026-07-03; the C920s stay on MSMF
     for 30fps). The mirror launcher releases cameras gracefully before replacing
     a running server.
-- `tests/` — 165 passing unit tests.
+- `tests/` — 180 passing unit tests.
 - `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
   proof artifacts (no personal data).
 

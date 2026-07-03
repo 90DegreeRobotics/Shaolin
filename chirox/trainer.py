@@ -28,20 +28,37 @@ import os
 import time
 from datetime import datetime, timezone
 
-from chirox.vision.stances import STANCES
-
-DISPLAY = {
-    "horse": "Horse stance",
-    "ma_bu": "Horse stance",
-    "bow": "Bow stance",
-    "gong_bu": "Bow stance",
-    "crane": "Crane stance",
-    "du_li_bu": "Crane stance",
-}
+from chirox.vision.reps import REP_CATALOG, make_counter
+from chirox.vision.stances import HOLD_CATALOG, STANCES
 
 DEFAULT_SECONDS = 60
+DEFAULT_REPS = 10
 GRACE_S = 6.0            # settle-in time after the announcement, not judged
 CORRECTION_GAP_S = 7.0   # minimum silence between spoken corrections
+
+# The rotation Chirox draws from when choosing for you: a real session mix —
+# stances, conditioning holds, and counted reps, all from the reference charts.
+DEFAULT_ROTATION = [
+    "horse", "bow", "crane", "one_leg_stand", "squat_hold", "wall_sit",
+    "plank", "horse_guard", "drop_stance", "squats", "pushups", "knee_raises",
+]
+
+
+def drill_label(key: str) -> str:
+    if key in REP_CATALOG:
+        return REP_CATALOG[key]["label"]
+    if key in HOLD_CATALOG:
+        return HOLD_CATALOG[key]["label"]
+    return key
+
+
+def full_catalog() -> list[dict]:
+    """Everything trainable, for the deck's chips: holds then reps."""
+    out = [{"key": k, "label": v["label"], "kind": "hold", "view": v["view"]}
+           for k, v in HOLD_CATALOG.items()]
+    out += [{"key": k, "label": v["label"], "kind": "reps", "view": v["view"]}
+            for k, v in REP_CATALOG.items()]
+    return out
 
 
 def _iso_now() -> str:
@@ -52,14 +69,21 @@ def _iso_now() -> str:
 
 
 def choose_plan(available: list[str], history_counts: dict[str, int],
-                n: int = 3, seconds: int = DEFAULT_SECONDS) -> list[tuple[str, int]]:
+                n: int = 3, seconds: int = DEFAULT_SECONDS,
+                reps: int = DEFAULT_REPS) -> list[dict]:
     """Least-practiced first: Chirox calls what the Record says you neglect.
 
-    ``history_counts`` maps stance name -> sealed session count. Deterministic:
-    ties break alphabetically, no randomness to argue with.
+    Deterministic: ties break alphabetically, no randomness to argue with.
+    Returns drill dicts: {kind: hold|reps, key, seconds|target}.
     """
     ranked = sorted(available, key=lambda s: (history_counts.get(s, 0), s))
-    return [(s, seconds) for s in ranked[:n]]
+    plan = []
+    for key in ranked[:n]:
+        if key in REP_CATALOG:
+            plan.append({"kind": "reps", "key": key, "target": reps})
+        else:
+            plan.append({"kind": "hold", "key": key, "seconds": seconds})
+    return plan
 
 
 def drill_summary(samples: list[tuple[float, object]], duration_s: float) -> dict:
@@ -156,12 +180,19 @@ class Trainer:
         drills: list[dict] = []
         cap = open_capture(self.source)
         tracker = PoseTracker()
-        clock_ms = 0
+        self._clock_ms = 0
         try:
             self._say(f"Training call. {len(plan)} drills. I measure; I do not flatter.")
-            for stance, seconds in plan:
-                label = DISPLAY.get(stance, stance)
-                evaluator = STANCES[stance]
+            for drill in plan:
+                key = drill["key"]
+                label = drill_label(key)
+                if drill["kind"] == "reps":
+                    drills.append(self._run_reps(cap, tracker, key, drill["target"]))
+                    continue
+
+                seconds = drill["seconds"]
+                evaluator = STANCES[key]
+                view = HOLD_CATALOG.get(key, {}).get("view", "front")
                 self._say(f"{label}. {seconds} seconds. Begin.")
 
                 samples: list[tuple[float, object]] = []
@@ -174,8 +205,8 @@ class Trainer:
                     ret, frame = cap.read()
                     if not ret:
                         break
-                    clock_ms += 33
-                    lm = tracker.detect(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), clock_ms)
+                    self._clock_ms += 33
+                    lm = tracker.detect(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), self._clock_ms)
                     if lm is None or elapsed < GRACE_S:
                         continue
                     reading = evaluator(points_from_landmarks(lm))
@@ -187,7 +218,7 @@ class Trainer:
                         last_correction = time.perf_counter() - t0
 
                 summary = drill_summary(samples, seconds)
-                summary["stance"] = stance
+                summary["stance"] = key
                 drills.append(summary)
                 self._say(spoken_result(label, summary))
 
@@ -203,6 +234,42 @@ class Trainer:
             cap.release()
             tracker.close()
             lock.unlink(missing_ok=True)
+
+    def _run_reps(self, cap, tracker, key: str, target: int) -> dict:
+        """A counted set: he says each rep number as your body completes it."""
+        import cv2
+
+        from chirox.vision.pipeline import points_from_landmarks
+
+        spec = REP_CATALOG[key]
+        label = spec["label"]
+        self._say(f"{label}. {target} repetitions. I count only what I see. Begin.")
+        counter = make_counter(key)
+        seen = 0
+        t0 = time.perf_counter()
+        time_cap = GRACE_S + target * 8.0    # slow, controlled reps; no rush
+        while time.perf_counter() - t0 < time_cap and counter.count < target:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            self._clock_ms += 33
+            lm = tracker.detect(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), self._clock_ms)
+            if lm is None:
+                continue
+            seen += 1
+            signal = spec["signal"](points_from_landmarks(lm))
+            if counter.push(signal):
+                self._say(str(counter.count))
+        summary = {"kind": "reps", "stance": key, "count": counter.count,
+                   "target": target, "frames_with_body": seen,
+                   "duration_s": round(time.perf_counter() - t0, 1)}
+        if counter.count >= target:
+            self._say(f"{target}. Done. Counted, every one.")
+        elif seen == 0:
+            self._say(f"{label}: I could not see you. Nothing is counted.")
+        else:
+            self._say(f"Time. {counter.count} of {target} - the honest count.")
+        return summary
 
     @staticmethod
     def _seal(payload: dict):
@@ -222,20 +289,29 @@ class Trainer:
 
 def run_training(source=0, stances: list[str] | None = None,
                  seconds: int = DEFAULT_SECONDS, n: int = 3,
+                 reps: int = DEFAULT_REPS,
                  speak: bool = True, seal: bool = True) -> dict:
-    """Entry point: Chirox chooses the drills (or takes yours) and calls them."""
-    available = ["horse", "bow", "crane"]  # canonical names, one per stance
+    """Entry point: Chirox chooses the drills (or takes yours) and calls them.
+
+    ``stances`` accepts any catalog key — stance holds, conditioning holds, or
+    counted rep drills (squats, pushups, situps, knee_raises, jumping_jacks).
+    """
     if stances:
+        plan = []
         for s in stances:
-            if s not in STANCES:
-                raise ValueError(f"unknown stance '{s}'. Known: {sorted(STANCES)}")
-        plan = [(s, seconds) for s in stances]
+            if s in REP_CATALOG:
+                plan.append({"kind": "reps", "key": s, "target": reps})
+            elif s in STANCES:
+                plan.append({"kind": "hold", "key": s, "seconds": seconds})
+            else:
+                raise ValueError(
+                    f"unknown drill '{s}'. Known: {sorted(set(STANCES) | set(REP_CATALOG))}")
     else:
         from chirox.config import CODEX_PATH
         from chirox.record.codex import Codex
 
         counts = history_counts(Codex(CODEX_PATH))
-        plan = choose_plan(available, counts, n=n, seconds=seconds)
+        plan = choose_plan(DEFAULT_ROTATION, counts, n=n, seconds=seconds, reps=reps)
     return Trainer(source=source, speak=speak).run(plan, seal=seal)
 
 
@@ -245,8 +321,10 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser(description="Chirox calls the training")
     ap.add_argument("--source", default="0", help="camera index")
-    ap.add_argument("--stances", default=None, help="comma list, e.g. horse,crane (default: Chirox chooses)")
-    ap.add_argument("--seconds", type=int, default=DEFAULT_SECONDS, help="seconds per drill")
+    ap.add_argument("--stances", default=None,
+                    help="comma list of catalog keys, holds or reps (default: Chirox chooses)")
+    ap.add_argument("--seconds", type=int, default=DEFAULT_SECONDS, help="seconds per hold")
+    ap.add_argument("--reps", type=int, default=DEFAULT_REPS, help="target per rep drill")
     ap.add_argument("--drills", type=int, default=3, help="how many drills when Chirox chooses")
     ap.add_argument("--no-speak", action="store_true")
     ap.add_argument("--no-seal", action="store_true")
@@ -255,7 +333,7 @@ if __name__ == "__main__":
     result = run_training(
         source=int(args.source) if str(args.source).isdigit() else args.source,
         stances=args.stances.split(",") if args.stances else None,
-        seconds=args.seconds, n=args.drills,
+        seconds=args.seconds, n=args.drills, reps=args.reps,
         speak=not args.no_speak, seal=not args.no_seal,
     )
     print(json.dumps(result, indent=2))

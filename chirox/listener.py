@@ -332,10 +332,10 @@ class ChiroxEar:
             i = 0
         self._panic.clear()
         if i > 0:
-            self._say(f"Continuing {label} from passage {i + 1} of {len(chunks)}.")
+            self._say(f"Continuing {label} where we left off.")
         else:
-            self._say(f"Reading {label}. {len(chunks)} passages. "
-                      "Speak after any passage to stop me.")
+            self._say(f"{label}. I will read it to you, all of it. "
+                      "Say stop whenever you need silence.")
         try:
             while i < len(chunks):
                 if self._panic.is_set():
@@ -351,8 +351,8 @@ class ChiroxEar:
                     norm = _normalize(heard)
                     print(f'[read-me] heard between passages: "{heard}"')
                     if "stop" in norm.split() or route(norm) == "sleep":
-                        self._say(f"Bookmarked at passage {i} of {len(chunks)}. "
-                                  f"Say — read me {label} — to continue.")
+                        self._say(f"Marked where we stopped. Say — read me {label} — "
+                                  "and I continue from there.")
                         return
             self._say(f"That completes {label}.")
         finally:

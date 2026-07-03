@@ -6,7 +6,7 @@
     <title>Chirox</title>
     <link rel="icon" href="/static/chirox.ico">
     <!-- versioned asset URLs: an old cached copy can never be reused -->
-    <link rel="stylesheet" href="/static/styles.css?v=4">
+    <link rel="stylesheet" href="/static/styles.css?v=5">
   </head>
   <body>
     <header class="topbar">
@@ -27,9 +27,7 @@
 
     <section id="trainStrip" class="strip" hidden>
       <span class="strip-label">Drills</span>
-      <button id="drillHorse" class="chip" type="button">Horse</button>
-      <button id="drillBow" class="chip" type="button">Bow</button>
-      <button id="drillCrane" class="chip" type="button">Crane</button>
+      <div id="drillList" class="chip-row">Loading…</div>
       <span class="strip-label">Seconds</span>
       <button class="chip time-chip" data-sec="30" type="button">30</button>
       <button class="chip time-chip sel" data-sec="60" type="button">60</button>
@@ -106,6 +104,6 @@
       <div id="timelineList" class="timeline-mini">Loading…</div>
     </footer>
 
-    <script src="/static/app.js?v=4"></script>
+    <script src="/static/app.js?v=5"></script>
   </body>
 </html>

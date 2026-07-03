@@ -211,13 +211,347 @@ def evaluate_crane_stance(points: dict[str, Point]) -> StanceReading:
     return StanceReading("Crane Stance (Du Li Bu)", metrics, flags, assessment, round(conf, 3), False)
 
 
-STANCES = {
-    "horse": evaluate_horse_stance,
-    "ma_bu": evaluate_horse_stance,
-    "bow": evaluate_bow_stance,
-    "gong_bu": evaluate_bow_stance,
-    "crane": evaluate_crane_stance,
-    "du_li_bu": evaluate_crane_stance,
+# --- The pose template engine ----------------------------------------------------
+#
+# One year of Kung Fu needs a catalog, not three functions. Every static pose
+# from the reference charts is a declarative template over the same rule
+# vocabulary; one engine evaluates them all, so every entry gets the same
+# uncertainty gate, the same honest flags, and the same tests.
+
+from typing import NamedTuple
+
+
+class AngleRule(NamedTuple):
+    metric: str
+    joints: tuple[str, str, str]     # angle at the middle joint
+    lo: float
+    hi: float
+    flag: str
+    message: str
+
+
+class AboveRule(NamedTuple):
+    a: str                            # a must sit HIGHER on screen than b
+    b: str
+    margin: float                     # in units of the body scale (hip→ankle)
+    flag: str
+    message: str
+
+
+class TiltRule(NamedTuple):
+    a: str                            # segment a→b compared against an axis
+    b: str
+    axis: str                         # "vertical" | "horizontal"
+    tol_deg: float
+    flag: str
+    message: str
+
+
+class AsymRule(NamedTuple):
+    """Two-sided legs where one is deep and the other extended (drop stance)."""
+    deep_max: float                   # the bent knee must be at most this
+    ext_min: float                    # the extended knee must be at least this
+    flag: str
+    message: str
+
+
+class PoseTemplate(NamedTuple):
+    key: str
+    label: str
+    view: str                         # "front" | "side" — camera guidance
+    required: tuple[str, ...]
+    angle_rules: tuple = ()
+    above_rules: tuple = ()
+    tilt_rules: tuple = ()
+    asym_rules: tuple = ()
+
+
+def _body_scale(points: dict[str, Point]) -> float:
+    """Hip→ankle length when visible, else shoulder→hip: framing-independent."""
+    for a, b in ((LEFT_HIP, LEFT_ANKLE), (RIGHT_HIP, RIGHT_ANKLE),
+                 (LEFT_SHOULDER, LEFT_HIP), (RIGHT_SHOULDER, RIGHT_HIP)):
+        if a in points and b in points:
+            d = abs(points[a][1] - points[b][1])
+            if d > 1e-6:
+                return d
+    return 1.0
+
+
+def _best_side(points: dict[str, Point]) -> str:
+    """For side-view poses: judge the side the camera actually sees."""
+    def vis(side):
+        js = [j for j in points if j.startswith(side)]
+        return sum(points[j][2] for j in js) / len(js) if js else 0.0
+    return "left" if vis("left_") >= vis("right_") else "right"
+
+
+def _resolve(joint: str, side: str) -> str:
+    """'~knee' means 'the visible side's knee'; explicit names pass through."""
+    return f"{side}_{joint[1:]}" if joint.startswith("~") else joint
+
+
+def _seg_tilt_deg(pa: Point, pb: Point, axis: str) -> float:
+    dx, dy = pb[0] - pa[0], pb[1] - pa[1]
+    ang = abs(math.degrees(math.atan2(dy, dx)))          # 0 = horizontal
+    from_horizontal = min(ang, 180 - ang)
+    return abs(90 - from_horizontal) if axis == "vertical" else from_horizontal
+
+
+def evaluate_template(t: PoseTemplate, points: dict[str, Point]) -> StanceReading:
+    side = _best_side(points)
+    required = tuple(_resolve(j, side) for j in t.required)
+    conf = _confidence(points, list(required))
+    if conf < UNCERTAINTY_THRESHOLD:
+        return _uncertain_reading(t.label, list(required), conf)
+
+    scale = _body_scale(points)
+    metrics: dict[str, float] = {}
+    flags: list[str] = []
+    messages: dict[str, str] = {}
+
+    def P(j):
+        return points[_resolve(j, side)]
+
+    for r in t.angle_rules:
+        deg = angle(P(r.joints[0]), P(r.joints[1]), P(r.joints[2]))
+        metrics[r.metric] = round(deg, 2)
+        if not (r.lo <= deg <= r.hi):
+            flags.append(r.flag)
+            messages[r.flag] = r.message
+    for r in t.above_rules:
+        gap = (P(r.b)[1] - P(r.a)[1]) / scale        # positive = a higher than b
+        metrics[f"{r.flag}_gap"] = round(gap, 3)
+        if gap < r.margin:
+            flags.append(r.flag)
+            messages[r.flag] = r.message
+    for r in t.tilt_rules:
+        tilt = _seg_tilt_deg(P(r.a), P(r.b), r.axis)
+        metrics[f"{r.flag}_deg"] = round(tilt, 1)
+        if tilt > r.tol_deg:
+            flags.append(r.flag)
+            messages[r.flag] = r.message
+    for r in t.asym_rules:
+        lk = angle(points[LEFT_HIP], points[LEFT_KNEE], points[LEFT_ANKLE])
+        rk = angle(points[RIGHT_HIP], points[RIGHT_KNEE], points[RIGHT_ANKLE])
+        deep, ext = min(lk, rk), max(lk, rk)
+        metrics["deep_knee_angle"] = round(deep, 2)
+        metrics["extended_knee_angle"] = round(ext, 2)
+        if deep > r.deep_max or ext < r.ext_min:
+            flags.append(r.flag)
+            messages[r.flag] = r.message
+
+    assessment = f"{t.label}: held." if not flags else " | ".join(messages[f] for f in dict.fromkeys(flags))
+    return StanceReading(t.label, metrics, list(dict.fromkeys(flags)), assessment, round(conf, 3), False)
+
+
+# --- The catalog: every measurable static pose from the ten reference charts -------
+
+_LEGS_FRONT = (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE)
+_ARMS_FRONT = (LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST)
+
+POSE_TEMPLATES: tuple[PoseTemplate, ...] = (
+    # -- Stance chart --------------------------------------------------------------
+    PoseTemplate(
+        "drop_stance", "Drop Stance (Pu Bu, shallow)", "front", _LEGS_FRONT,
+        asym_rules=(AsymRule(120, 148, "not_split",
+                             "One leg sinks deep, the other extends long - split the levels."),),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 35,
+                             "torso_collapsed", "Keep the trunk tall while you sink."),),
+    ),
+    PoseTemplate(
+        "t_stance", "T Stance (arms level)", "front",
+        _LEGS_FRONT + _ARMS_FRONT,
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 160, 180,
+                      "legs_bent", "Stand the legs straight and together."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 160, 180,
+                      "legs_bent", "Stand the legs straight and together."),
+            AngleRule("left_elbow_angle", (LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST), 145, 180,
+                      "arms_bent", "Extend the arms long like a crossbeam."),
+            AngleRule("right_elbow_angle", (RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST), 145, 180,
+                      "arms_bent", "Extend the arms long like a crossbeam."),
+        ),
+        tilt_rules=(
+            TiltRule(LEFT_WRIST, RIGHT_WRIST, "horizontal", 12,
+                     "arms_not_level", "Bring both arms to shoulder height, level."),
+        ),
+    ),
+    PoseTemplate(
+        "parallel_ready", "Parallel Ready Stance", "front", _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER),
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 140, 174,
+                      "knees_wrong", "Soften the knees - ready, not locked, not squatting."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 140, 174,
+                      "knees_wrong", "Soften the knees - ready, not locked, not squatting."),
+        ),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 15,
+                             "leaning", "Stack the trunk upright over the hips."),),
+    ),
+    PoseTemplate(
+        "meditation_stance", "Narrow Meditation Stance", "front", _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER),
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 166, 180,
+                      "knees_bent", "Stand quietly tall - legs long."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 166, 180,
+                      "knees_bent", "Stand quietly tall - legs long."),
+        ),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 12,
+                             "leaning", "Center the spine - no lean."),),
+    ),
+    PoseTemplate(
+        "empty_stance", "Empty / Cat Stance (Xu Bu)", "side", ("~hip", "~knee", "~ankle", "~shoulder"),
+        angle_rules=(AngleRule("loaded_knee_angle", ("~hip", "~knee", "~ankle"), 95, 150,
+                               "not_sitting", "Sit into the rear leg - the front foot stays empty."),),
+        tilt_rules=(TiltRule("~shoulder", "~hip", "vertical", 25,
+                             "leaning", "Trunk tall while the rear leg carries you."),),
+    ),
+    # -- Conditioning + floor charts (side view) ---------------------------------------
+    PoseTemplate(
+        "plank", "Plank / Pushup Top", "side", ("~shoulder", "~hip", "~ankle"),
+        angle_rules=(AngleRule("body_line_angle", ("~shoulder", "~hip", "~ankle"), 155, 180,
+                               "hips_broken", "One straight line - no sagging, no piking."),),
+        tilt_rules=(TiltRule("~shoulder", "~ankle", "horizontal", 28,
+                             "not_horizontal", "Lower the body into the plank line."),),
+    ),
+    PoseTemplate(
+        "wall_sit", "Wall Sit", "side", ("~shoulder", "~hip", "~knee", "~ankle"),
+        angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 70, 115,
+                               "too_high", "Slide down - thighs toward parallel."),),
+        tilt_rules=(TiltRule("~shoulder", "~hip", "vertical", 20,
+                             "torso_tilt", "Back flat against the wall, trunk vertical."),),
+    ),
+    PoseTemplate(
+        "squat_hold", "Squat Hold", "side", ("~hip", "~knee", "~ankle"),
+        angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 60, 118,
+                               "too_high", "Sink deeper - break parallel if the knees allow."),),
+    ),
+    PoseTemplate(
+        "hollow_hold", "Hollow Body Hold", "side", ("~shoulder", "~hip", "~ankle"),
+        angle_rules=(AngleRule("fold_angle", ("~shoulder", "~hip", "~ankle"), 95, 158,
+                               "fold_lost", "Fold at the center - shoulders and legs off the floor."),),
+        above_rules=(AboveRule("~ankle", "~hip", 0.02, "legs_down",
+                               "Lift the legs - heels above hip line."),),
+    ),
+    PoseTemplate(
+        "glute_bridge", "Glute Bridge Hold", "side", ("~shoulder", "~hip", "~knee", "~ankle"),
+        angle_rules=(
+            AngleRule("hip_line_angle", ("~shoulder", "~hip", "~knee"), 150, 180,
+                      "hips_low", "Drive the hips up - straight line shoulder to knee."),
+            AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 55, 110,
+                      "feet_far", "Walk the heels closer under the knees."),
+        ),
+        above_rules=(AboveRule("~hip", "~shoulder", 0.03, "hips_sagging",
+                               "Hips higher than the chest line."),),
+    ),
+    PoseTemplate(
+        "leg_raise_hold", "Leg Raise Hold", "side", ("~shoulder", "~hip", "~knee", "~ankle"),
+        angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 145, 180,
+                               "knees_bent", "Long legs - bend only what the back demands."),),
+        above_rules=(AboveRule("~ankle", "~hip", 0.25, "legs_low",
+                               "Raise the legs - ankles well above the hip line."),),
+    ),
+    # -- Qi Gong + breath charts ---------------------------------------------------------
+    PoseTemplate(
+        "arms_raised", "Arms Raised (Holding Up the Heavens)", "front",
+        _ARMS_FRONT + (LEFT_HIP, RIGHT_HIP, LEFT_KNEE, RIGHT_KNEE, LEFT_ANKLE, RIGHT_ANKLE),
+        angle_rules=(
+            AngleRule("left_elbow_angle", (LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST), 130, 180,
+                      "arms_bent", "Press the sky - arms long."),
+            AngleRule("right_elbow_angle", (RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST), 130, 180,
+                      "arms_bent", "Press the sky - arms long."),
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 155, 180,
+                      "legs_bent", "Root the legs while the arms rise."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 155, 180,
+                      "legs_bent", "Root the legs while the arms rise."),
+        ),
+        above_rules=(
+            AboveRule(LEFT_WRIST, LEFT_SHOULDER, 0.18, "arms_low", "Hands above the head, palms to heaven."),
+            AboveRule(RIGHT_WRIST, RIGHT_SHOULDER, 0.18, "arms_low", "Hands above the head, palms to heaven."),
+        ),
+    ),
+    PoseTemplate(
+        "wuji_standing", "Wuji Standing", "front",
+        _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_WRIST, RIGHT_WRIST),
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 162, 180,
+                      "knees_bent", "Stand empty and tall."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 162, 180,
+                      "knees_bent", "Stand empty and tall."),
+        ),
+        above_rules=(
+            AboveRule(LEFT_HIP, LEFT_WRIST, 0.0, "hands_raised", "Let the arms hang - nothing to hold."),
+            AboveRule(RIGHT_HIP, RIGHT_WRIST, 0.0, "hands_raised", "Let the arms hang - nothing to hold."),
+        ),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 12,
+                             "leaning", "Suspended from the crown - no lean."),),
+    ),
+    PoseTemplate(
+        "horse_guard", "Horse Stance, Guard Up", "front",
+        _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_WRIST, RIGHT_WRIST),
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 80, 120,
+                      "stance_broken", "Sink the horse - knees toward ninety."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 80, 120,
+                      "stance_broken", "Sink the horse - knees toward ninety."),
+        ),
+        above_rules=(
+            AboveRule(LEFT_WRIST, LEFT_HIP, 0.15, "guard_down", "Bring the guard up - fists at chest height."),
+            AboveRule(RIGHT_WRIST, RIGHT_HIP, 0.15, "guard_down", "Bring the guard up - fists at chest height."),
+        ),
+    ),
+    PoseTemplate(
+        "seated_meditation", "Seated Meditation", "front",
+        (LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP, LEFT_KNEE, RIGHT_KNEE),
+        tilt_rules=(
+            TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 16,
+                     "slumping", "Sit tall - the spine is the mountain."),
+            TiltRule(LEFT_SHOULDER, RIGHT_SHOULDER, "horizontal", 12,
+                     "tilted", "Level the shoulders."),
+        ),
+        above_rules=(AboveRule(LEFT_HIP, LEFT_KNEE, -0.6, "standing",
+                               "Settle down onto the seat."),),
+    ),
+)
+
+# one_leg_stand needs direction-agnostic logic; replace the placeholder with a closure.
+
+
+def evaluate_one_leg_stand(points: dict[str, Point]) -> StanceReading:
+    """One-leg stand: like the crane but without demanding hip-height knee lift."""
+    r = evaluate_crane_stance(points)
+    if r.uncertain or "no_lift" in r.flags:
+        return r
+    flags = [f for f in r.flags if f != "knee_below_hip"]
+    assessment = "One-leg stand: held." if not flags else r.assessment
+    return StanceReading("One-Leg Stand", r.metrics, flags, assessment, r.confidence, False)
+
+
+def _register_catalog() -> dict:
+    stances = {
+        "horse": evaluate_horse_stance,
+        "ma_bu": evaluate_horse_stance,
+        "bow": evaluate_bow_stance,
+        "gong_bu": evaluate_bow_stance,
+        "crane": evaluate_crane_stance,
+        "du_li_bu": evaluate_crane_stance,
+        "one_leg_stand": evaluate_one_leg_stand,
+    }
+    for t in POSE_TEMPLATES:
+        if t.key == "one_leg_stand":
+            continue
+        stances[t.key] = (lambda tmpl: lambda pts: evaluate_template(tmpl, pts))(t)
+    return stances
+
+
+STANCES = _register_catalog()
+
+# Display names + camera guidance for every trainable hold (UI + trainer).
+HOLD_CATALOG: dict[str, dict] = {
+    "horse": {"label": "Horse Stance (Ma Bu)", "view": "front"},
+    "bow": {"label": "Bow Stance (Gong Bu)", "view": "front"},
+    "crane": {"label": "Crane Stance (Du Li Bu)", "view": "front"},
+    "one_leg_stand": {"label": "One-Leg Stand", "view": "front"},
+    **{t.key: {"label": t.label, "view": t.view} for t in POSE_TEMPLATES if t.key != "one_leg_stand"},
 }
 
 

@@ -157,11 +157,12 @@ def start_reading(label: str) -> dict:
 
 def start_training(stances: list[str] | None, seconds: int, drills: int, source: str = "0") -> dict:
     from chirox.narrator import stop_narration
+    from chirox.vision.reps import REP_CATALOG
     from chirox.vision.stances import STANCES
 
     if stances:
         for s in stances:
-            if s not in STANCES:
+            if s not in STANCES and s not in REP_CATALOG:
                 return {"ok": False, "error": f"unknown stance: {s}"}
     stop_narration()
     args = ["chirox.trainer", "--source", str(source), "--seconds", str(seconds), "--drills", str(drills)]

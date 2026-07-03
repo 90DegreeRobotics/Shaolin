@@ -104,12 +104,13 @@ def test_crane_uncertain_on_low_visibility():
 
 def test_choose_plan_prefers_least_practiced():
     plan = choose_plan(["horse", "bow", "crane"], {"horse": 10, "bow": 2, "crane": 0}, n=2, seconds=45)
-    assert plan == [("crane", 45), ("bow", 45)]
+    assert plan == [{"kind": "hold", "key": "crane", "seconds": 45},
+                    {"kind": "hold", "key": "bow", "seconds": 45}]
 
 
 def test_choose_plan_ties_break_deterministically():
     plan = choose_plan(["horse", "bow", "crane"], {}, n=3)
-    assert [s for s, _ in plan] == ["bow", "crane", "horse"]
+    assert [d["key"] for d in plan] == ["bow", "crane", "horse"]
 
 
 # --- drill summary & spoken result -----------------------------------------------------

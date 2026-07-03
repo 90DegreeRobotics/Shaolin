@@ -194,6 +194,13 @@ def library_read(req: ReadRequest):
     return control.start_reading(req.label)
 
 
+@app.get("/api/train/catalog")
+def train_catalog():
+    from chirox.trainer import full_catalog
+
+    return {"drills": full_catalog()}
+
+
 @app.post("/api/train/start")
 def train_start(req: TrainRequest):
     from chirox.web import control

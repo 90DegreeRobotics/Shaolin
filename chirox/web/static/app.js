@@ -317,8 +317,24 @@ singleSelect("ex-chip");
 singleSelect("len-chip");
 singleSelect("cam-chip");
 
-for (const id of ["drillHorse", "drillBow", "drillCrane"]) {
-  $(id).addEventListener("click", () => $(id).classList.toggle("sel"));
+async function loadDrillCatalog() {
+  try {
+    const data = await (await fetch("/api/train/catalog")).json();
+    const box = $("drillList");
+    box.innerHTML = "";
+    for (const d of data.drills) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip drill-chip";
+      chip.dataset.key = d.key;
+      chip.textContent = d.kind === "reps" ? `${d.label} ×` : d.label;
+      chip.title = `${d.kind === "reps" ? "Counted reps" : "Timed hold"} — best from the ${d.view} camera`;
+      chip.addEventListener("click", () => chip.classList.toggle("sel"));
+      box.append(chip);
+    }
+  } catch (err) {
+    $("drillList").textContent = "Catalog unavailable.";
+  }
 }
 
 document.querySelectorAll(".st-chip").forEach((chip) => {
@@ -338,10 +354,7 @@ $("swapBtn").addEventListener("click", swapThird);
 // --- organ launches ---------------------------------------------------------------
 
 $("trainGo").addEventListener("click", async () => {
-  const stances = [];
-  if ($("drillHorse").classList.contains("sel")) stances.push("horse");
-  if ($("drillBow").classList.contains("sel")) stances.push("bow");
-  if ($("drillCrane").classList.contains("sel")) stances.push("crane");
+  const stances = [...document.querySelectorAll(".drill-chip.sel")].map((c) => c.dataset.key);
   const seconds = Number(document.querySelector(".time-chip.sel").dataset.sec);
   if (state.running) await mirrorOff();  // the trainer needs the camera
   const res = await post("/api/train/start", {
@@ -468,5 +481,6 @@ loadStatus()
 refreshControl();
 refreshLibrary();
 refreshTimeline();
+loadDrillCatalog();
 setInterval(refreshControl, 5000);
 setInterval(refreshTimeline, 30000);

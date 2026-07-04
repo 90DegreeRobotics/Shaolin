@@ -85,8 +85,9 @@ def test_say_refuses_empty_text():
 def test_frontend_has_command_deck():
     text = client.get("/").text
     for element in ("silenceButton", "trainGo", "libraryList",
-                    "recordGo", "masterGo", "timelineList", "swapBtn"):
+                    "recordGo", "masterGo", "timelineList"):
         assert element in text, element
+    assert "swapBtn" not in text
 
 
 def test_record_stop_honest_when_nothing_running(monkeypatch):

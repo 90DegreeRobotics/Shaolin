@@ -14,7 +14,7 @@ def test_wake_plain():
     assert cmd == "what day is it"
 
 
-def test_wake_whisper_spellings():
+def test_wake_whisper_spellings_stay_tight():
     for heard in ["Kairox, hello.", "Kai Rox how am I doing", "KYROX!", "chirocks, status"]:
         woken, _ = match_wake(heard)
         assert woken, heard
@@ -27,15 +27,21 @@ def test_wake_bare_name_gives_empty_command():
 
 
 def test_no_wake_on_ordinary_speech():
-    for heard in ["what time is it", "the chair rocks gently", "hello there", ""]:
+    for heard in ["what time is it", "the chair rocks gently", "hello there",
+                  "the sky rocks tonight", "kairos is a concept", ""]:
         woken, _ = match_wake(heard)
         assert not woken, heard
 
 
-def test_wake_mid_sentence():
+def test_wake_with_short_address_prefix():
     woken, cmd = match_wake("Hey Chirox tell me about horse stance")
     assert woken
     assert cmd == "tell me about horse stance"
+
+
+def test_no_wake_mid_sentence_room_audio():
+    woken, _ = match_wake("I was telling Chirox from the book summary")
+    assert not woken
 
 
 # --- routing -----------------------------------------------------------------------
@@ -49,6 +55,13 @@ def test_route_sleep_phrases():
 def test_route_day_questions():
     for cmd in ["what day is it", "which day am I on", "where do I stand"]:
         assert route(cmd) == "day", cmd
+
+
+def test_route_mode_switches():
+    assert route("learning mode") == "mode_learning"
+    assert route("study mode") == "mode_learning"
+    assert route("training mode") == "mode_training"
+    assert route("mirror mode") == "mode_training"
 
 
 def test_route_everything_else_to_master():

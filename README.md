@@ -51,16 +51,19 @@ Current truth:
 - Chirox is a working, self-contained local system (`chirox/`): deterministic vision,
   an append-only Dojo Record, a local-model interpretive voice with a normal
   conversation register (every exchange sealed), a wise-sage register with a growth
-  ledger, a session recorder / visual timeline, an always-on wake-word ear, long-form
-  narration, and a spoken training caller. 165 passing tests.
-- The live mirror is proven on hardware: two cameras streaming simultaneously with the
-  wireframe locked on a real body and deterministic corrections displayed, driven
-  entirely from a one-page control deck (no terminal). Verified 2026-07-03.
+  ledger, a session recorder / visual timeline, an always-on wake-word ear with
+  stricter intentional wake handling, long-form narration, a spoken training caller,
+  and a mode-based local browser app. 188 passing tests.
+- The browser app now has two practitioner modes. **Training Mode** is a single
+  built-in-webcam mirror with the wireframe overlay, reference exercise guide, and
+  deterministic truth states. **Learning Mode** is a study desk: conversation,
+  Piper/Whisper activity, read-along library, Mandarin focus, and a day-by-day Dojo
+  Record editor that seals new versions instead of silently rewriting history.
 - There is one identity — **Master Chirox** — and one voice. Internal engines are never
   surfaced as separate voices, and Chirox has no runtime dependency on any other project.
 - Still honestly gated: the wireframe noise-floor calibration (a full-body still hold has
-  not been measured yet) and three simultaneous cameras (the USB hub carries two —
-  measured). See STATUS.md for the exact line between proven and gated.
+  not been measured yet). The previous multicamera cockpit is no longer the primary
+  interface; the current training surface is the built-in-webcam mirror.
 
 ## What This Is Not
 

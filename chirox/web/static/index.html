@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -6,7 +6,7 @@
     <title>Chirox</title>
     <link rel="icon" href="/static/chirox.ico">
     <!-- versioned asset URLs: an old cached copy can never be reused -->
-    <link rel="stylesheet" href="/static/styles.css?v=5">
+    <link rel="stylesheet" href="/static/styles.css?v=8">
   </head>
   <body>
     <header class="topbar">
@@ -14,6 +14,10 @@
         <h1>CHIROX</h1>
         <p id="standing">Day --</p>
       </div>
+      <nav class="mode-tabs" aria-label="Chirox mode">
+        <button id="trainingModeBtn" class="mode-tab sel" type="button">Training</button>
+        <button id="learningModeBtn" class="mode-tab" type="button">Learning</button>
+      </nav>
       <nav class="toggles">
         <button id="mirrorBtn" class="toggle" type="button">MIRROR</button>
         <button id="earBtn" class="toggle" type="button">EAR</button>
@@ -27,18 +31,18 @@
 
     <section id="trainStrip" class="strip" hidden>
       <span class="strip-label">Drills</span>
-      <div id="drillList" class="chip-row">Loading…</div>
+      <div id="drillList" class="chip-row">Loadingâ€¦</div>
       <span class="strip-label">Seconds</span>
       <button class="chip time-chip" data-sec="30" type="button">30</button>
       <button class="chip time-chip sel" data-sec="60" type="button">60</button>
       <button class="chip time-chip" data-sec="90" type="button">90</button>
-      <button id="trainGo" class="go" type="button">BEGIN — HE CALLS THE DRILLS</button>
+      <button id="trainGo" class="go" type="button">BEGIN â€” HE CALLS THE DRILLS</button>
       <span id="trainNote" class="note">Pick nothing and Chirox chooses what you have practiced least.</span>
     </section>
 
     <section id="readStrip" class="strip" hidden>
       <span class="strip-label">Library</span>
-      <div id="libraryList" class="chip-row">Loading…</div>
+      <div id="libraryList" class="chip-row">Loadingâ€¦</div>
     </section>
 
     <section id="recordStrip" class="strip" hidden>
@@ -53,40 +57,121 @@
       <button class="chip len-chip" data-min="3" type="button">3</button>
       <button class="chip len-chip sel" data-min="5" type="button">5</button>
       <button class="chip len-chip" data-min="10" type="button">10</button>
-      <span class="strip-label">Camera</span>
-      <button class="chip cam-chip sel" data-role="front" type="button">Front</button>
-      <button class="chip cam-chip" data-role="side" type="button">Side</button>
-      <button class="chip cam-chip" data-role="extra" type="button">Extra</button>
       <button id="recordGo" class="go" type="button">START RECORDING</button>
       <span id="recordNote" class="note">Video to the private archive; manifest sealed when it completes.</span>
     </section>
 
     <section id="masterStrip" class="strip" hidden>
-      <button id="masterGo" class="go" type="button">DEBRIEF — HE SPEAKS</button>
-      <span class="note">For anything else, just talk: "Chirox, …" — every exchange is sealed to the record.</span>
+      <button id="masterGo" class="go" type="button">DEBRIEF â€” HE SPEAKS</button>
+      <span class="note">For anything else, just talk: "Chirox, â€¦" â€” every exchange is sealed to the record.</span>
       <div id="masterText" class="master-text"></div>
     </section>
 
-    <main class="cams">
+    <section class="guide-band" aria-label="Current exercise guide">
+      <div class="guide-main">
+        <span class="strip-label">Current Work</span>
+        <h2 id="guideName">Horse Stance (Ma Bu)</h2>
+        <p id="guideInstruction">Set the body into the shape, root the feet, and hold still enough for Chirox to measure clean angles.</p>
+        <div class="guide-meta">
+          <span id="guideKind">Timed hold</span>
+          <span id="guideCamera">Best camera: front.</span>
+          <span id="guideTruth">Measured by Chirox vision.</span>
+        </div>
+      </div>
+      <div class="guide-image-wrap">
+        <img id="guideImage" alt="Exercise reference" src="">
+      </div>
+      <div id="guideRefs" class="guide-refs" aria-label="Reference images"></div>
+    </section>
+
+    <main class="cams mirror-stage">
       <article class="cam-box" id="frontBox">
-        <div class="cam-label"><strong>Front</strong><span id="frontConf">--</span></div>
+        <div class="cam-label"><strong>Built-in Webcam</strong><span id="frontConf">--</span></div>
         <canvas id="frontCanvas" width="640" height="360"></canvas>
         <div id="frontMsg" class="cam-msg">Ready.</div>
         <div id="frontAssess" class="cam-assess"></div>
       </article>
-      <article class="cam-box" id="sideBox">
-        <div class="cam-label"><strong>Side</strong><span id="sideConf">--</span></div>
-        <canvas id="sideCanvas" width="640" height="360"></canvas>
-        <div id="sideMsg" class="cam-msg">Ready.</div>
-        <div id="sideAssess" class="cam-assess"></div>
-      </article>
-      <article class="cam-box" id="extraBox">
-        <div class="cam-label"><strong>Extra</strong><span id="extraConf">--</span></div>
-        <canvas id="extraCanvas" width="640" height="360"></canvas>
-        <div id="extraMsg" class="cam-msg">Standby — the hub carries two live streams (measured).</div>
-        <div id="extraAssess" class="cam-assess"></div>
-        <button id="swapBtn" class="chip swap" type="button">Swap live with Side</button>
-      </article>
+    </main>
+
+    <main id="learningDeck" class="learning-deck" hidden>
+      <section class="learn-card chat-card">
+        <div class="card-head">
+          <span class="strip-label">Master Conversation</span>
+          <button id="masterAskBtn" class="go" type="button">ASK</button>
+        </div>
+        <div id="chatLog" class="chat-log"></div>
+        <textarea id="masterQuestion" rows="4" placeholder="Ask Chirox about today's study, training, record, or Mandarin focus."></textarea>
+      </section>
+
+      <section class="learn-card voice-card">
+        <span class="strip-label">Piper / Whisper / Read-Along</span>
+        <div class="voice-grid">
+          <div><strong>Piper</strong><p id="piperText">No speech yet.</p></div>
+          <div><strong>Whisper</strong><p id="whisperText">Nothing heard yet.</p></div>
+        </div>
+        <div class="readalong">
+          <div class="readalong-head"><strong id="readingTitle">No book active</strong><span id="readingProgress">--</span></div>
+          <p id="readingChunk">Choose a book below to read along while Chirox speaks.</p>
+        </div>
+      </section>
+
+      <section class="learn-card books-card">
+        <span class="strip-label">Library</span>
+        <div id="learningBooks" class="book-list">Loading...</div>
+      </section>
+
+      <section class="learn-card mandarin-card">
+        <span class="strip-label">Mandarin Focus</span>
+        <div id="hanziChar" class="hanzi">道</div>
+        <div class="hanzi-meta"><strong id="hanziPinyin">dao4</strong><span id="hanziMeaning">path, way, principle</span></div>
+        <p id="hanziQuestion">Did I walk the path or only imagine it?</p>
+      </section>
+
+      <section class="learn-card record-card">
+        <div class="card-head">
+          <span class="strip-label">Dojo Record</span>
+          <div class="day-picker">
+            <label for="recordDay">Day</label>
+            <input id="recordDay" type="number" min="1" max="365" value="1">
+            <button id="loadDayBtn" class="chip" type="button">Load</button>
+          </div>
+        </div>
+        <div id="recordDays" class="day-list"></div>
+        <div class="record-forms">
+          <form id="dailyForm" class="record-form">
+            <h3>Daily Check-In</h3>
+            <label>Sleep<textarea name="sleep" rows="2"></textarea></label>
+            <label>Meditation<textarea name="meditation" rows="2"></textarea></label>
+            <label>Qi Gong<textarea name="qi_gong" rows="2"></textarea></label>
+            <label>Kung Fu / Conditioning<textarea name="kung_fu" rows="2"></textarea></label>
+            <label>Walk<textarea name="walk" rows="2"></textarea></label>
+            <label>Food / Hydration<textarea name="food_hydration" rows="2"></textarea></label>
+            <label>Pain Level 0-10<input name="pain_level" type="number" min="0" max="10" value="0"></label>
+            <label>Mood<textarea name="mood" rows="2"></textarea></label>
+            <label>One Trigger<textarea name="one_trigger" rows="2"></textarea></label>
+            <label>One Act of Ren<textarea name="one_ren" rows="2"></textarea></label>
+            <label>One Lesson<textarea name="one_lesson" rows="2"></textarea></label>
+            <label>Tomorrow's Minimum<textarea name="tomorrow_minimum" rows="2"></textarea></label>
+            <button id="saveDailyBtn" class="go" type="button">SAVE DAILY</button>
+          </form>
+          <form id="mandarinForm" class="record-form">
+            <h3>Mandarin Journal</h3>
+            <label>Physical Truth<textarea name="physical_truth" rows="2"></textarea></label>
+            <label>Emotional Truth<textarea name="emotional_truth" rows="2"></textarea></label>
+            <label>Conduct Truth<textarea name="conduct_truth" rows="2"></textarea></label>
+            <label>One Sentence Worth Keeping<textarea name="one_sentence" rows="2"></textarea></label>
+            <label>Core Word / Phrase<input name="core_word" type="text"></label>
+            <label>Mandarin<input name="mandarin" type="text"></label>
+            <label>Pinyin<input name="pinyin" type="text"></label>
+            <label>Character Focus<input name="character_focus" type="text"></label>
+            <label>Calligraphy Repetitions<input name="calligraphy_reps" type="number" min="0" value="0"></label>
+            <label>What This Character Asked<textarea name="what_character_asked" rows="2"></textarea></label>
+            <label>Tomorrow's Vow<textarea name="tomorrow_vow" rows="2"></textarea></label>
+            <button id="saveMandarinBtn" class="go" type="button">SAVE MANDARIN</button>
+          </form>
+        </div>
+        <p id="recordNote2" class="note">Save seals a new version into the append-only Dojo Record.</p>
+      </section>
     </main>
 
     <footer class="deck-foot">
@@ -101,9 +186,9 @@
         <span id="flags" class="note"></span>
         <span id="sysCodex" class="note"></span>
       </div>
-      <div id="timelineList" class="timeline-mini">Loading…</div>
+      <div id="timelineList" class="timeline-mini">Loadingâ€¦</div>
     </footer>
 
-    <script src="/static/app.js?v=5"></script>
+    <script src="/static/app.js?v=8"></script>
   </body>
 </html>

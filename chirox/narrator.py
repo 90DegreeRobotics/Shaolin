@@ -399,6 +399,16 @@ class Narrator:
                         break
                     i, audio = item
                     preview = chunks[i][:64]
+                    try:
+                        from chirox.activity import update_activity
+
+                        update_activity(reading_active=True, reading={
+                            "chunk_index": i + 1,
+                            "total_chunks": len(chunks),
+                            "text": chunks[i],
+                        })
+                    except Exception:
+                        pass
                     print(f"[narrate {i + 1}/{len(chunks)}] {preview}…")
                     audio = np.concatenate([audio, breath])
                     for off in range(0, len(audio), slice_frames):
@@ -414,6 +424,12 @@ class Narrator:
             sd.stop()
             print(f"\n[narrate] stopped at chunk {i + 1}. Resume with:  --from {i + 1}")
         finally:
+            try:
+                from chirox.activity import update_activity
+
+                update_activity(reading_active=False)
+            except Exception:
+                pass
             lock.unlink(missing_ok=True)
 
     def render(self, chunks: list[str], out_path: Path, start: int = 0) -> Path:
@@ -487,6 +503,15 @@ def main(argv=None) -> int:
     start = max(0, args.start - 1)
     n = Narrator(voice=args.voice, pace=args.pace)
     print(f"[narrate] {len(chunks)} chunk(s), voice {args.voice}, pace {args.pace}")
+    try:
+        from chirox.activity import update_activity
+
+        label = Path(args.path).name if args.path else "spoken text"
+        update_activity(reading_title=label, reading_active=not bool(args.out),
+                        reading={"chunk_index": start + 1, "total_chunks": len(chunks),
+                                 "text": chunks[start]})
+    except Exception:
+        pass
     if args.out:
         out = n.render(chunks, Path(args.out), start=start)
         print(f"[narrate] wrote {out}")

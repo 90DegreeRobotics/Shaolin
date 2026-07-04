@@ -104,6 +104,18 @@ def test_template_uncertain_gate_holds():
     assert r.metrics == {}
 
 
+def test_missing_required_joints_returns_uncertain_not_error():
+    pts = _standing()
+    del pts[LEFT_ELBOW]
+    del pts[RIGHT_ELBOW]
+    del pts[LEFT_WRIST]
+    del pts[RIGHT_WRIST]
+    r = evaluate_template(_template("arms_raised"), pts)
+    assert r.uncertain
+    assert r.metrics == {}
+    assert "low_visibility" in r.flags
+
+
 # --- rep counting -------------------------------------------------------------------------
 
 

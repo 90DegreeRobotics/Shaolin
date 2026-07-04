@@ -22,10 +22,13 @@ package, and the mapping from the metaphor below to real code is:
   on a local Ollama model, bound to recorded evidence, refusing to diagnose form or
   fabricate. One identity — internal engines are never surfaced as separate voices.
 
-Update 2026-07-04: the gates below are closed — the live run is proven on a real
-body with dual-camera capture, and the system has grown an ear, a narrator, a
-conversation register, a training caller, and a one-page control deck. This
-document remains as the original concept; `STATUS.md` is the live truth surface.
+Update 2026-07-04: the gates below are closed — the live run is proven on real
+hardware, and the system has grown an ear, a narrator, a conversation register, a
+training caller, and a mode-based browser app. The current primary surface is a
+single built-in-webcam Training Mode mirror plus a full Learning Mode study desk.
+Dual-camera capture remains a measured experiment until a calibrated rig makes it
+worth returning to. This document remains as the original concept; `STATUS.md` is
+the live truth surface.
 
 ---
 

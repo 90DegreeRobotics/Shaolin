@@ -40,13 +40,15 @@ WHISPER_PROMPT = "The assistant's name is Chirox. The speaker may say: Chirox, w
 
 # Whisper spellings observed/expected for "Chirox" — matched space-insensitively.
 WAKE_ALIASES = [
-    "chirox", "kairox", "cairox", "kyrox", "chyrox", "chirocks", "kirox",
-    "cheerox", "shirox", "chirax", "kairos", "chi rox", "kai rox", "sky rox",
+    "chirox", "chi rox", "kairox", "kai rox", "kyrox", "chirocks",
 ]
+WAKE_PREFIXES = {"hey", "ok", "okay"}
 
 _SLEEP_PHRASES = ["go to sleep", "stop listening", "shut down", "shutdown", "good night", "goodnight"]
 _DAY_HINTS = ["what day", "which day", "where do i stand", "where am i", "day number"]
 _TRAIN_HINTS = ["train me", "call the training", "start training", "training call", "lets train", "let us train"]
+_TRAINING_MODE_HINTS = ["training mode", "mirror mode", "body mode"]
+_LEARNING_MODE_HINTS = ["learning mode", "study mode", "reading mode"]
 
 
 def _normalize(text: str) -> str:
@@ -57,26 +59,23 @@ def _normalize(text: str) -> str:
 def match_wake(text: str, aliases: list[str] | None = None) -> tuple[bool, str]:
     """Return (woken, command-after-the-wake-word).
 
-    Matching is case-, punctuation- and space-insensitive so "Kai Rox," still
-    wakes him. The remainder is whatever was said after the name.
+    The wake word must be an intentional address: first words, or after a short
+    address prefix like "hey". It is not matched in the middle of ordinary room
+    speech.
     """
     aliases = aliases or WAKE_ALIASES
     norm = _normalize(text)
     if not norm:
         return False, ""
     words = norm.split()
-    squashed = "".join(words)
-    for alias in sorted((a.replace(" ", "") for a in aliases), key=len, reverse=True):
-        idx = squashed.find(alias)
-        if idx == -1:
-            continue
-        # walk words until the alias is fully covered, then the rest is the command
-        consumed = 0
-        for w_i, w in enumerate(words):
-            consumed += len(w)
-            if consumed >= idx + len(alias):
-                return True, " ".join(words[w_i + 1:]).strip()
-        return True, ""
+    if words[0] in WAKE_PREFIXES:
+        words = words[1:]
+    for alias in sorted(aliases, key=lambda a: len(a.split()), reverse=True):
+        alias_words = alias.split()
+        if words[:len(alias_words)] == alias_words:
+            return True, " ".join(words[len(alias_words):]).strip()
+        if alias.replace(" ", "") == "".join(words[:len(alias_words)]):
+            return True, " ".join(words[len(alias_words):]).strip()
     return False, ""
 
 
@@ -87,6 +86,10 @@ def route(command: str) -> str:
         return "sleep"
     if any(p in norm for p in _DAY_HINTS):
         return "day"
+    if any(p in norm for p in _TRAINING_MODE_HINTS):
+        return "mode_training"
+    if any(p in norm for p in _LEARNING_MODE_HINTS):
+        return "mode_learning"
     if any(p in norm for p in _TRAIN_HINTS):
         return "train"
     if "read" in norm.split():
@@ -211,8 +214,9 @@ class ChiroxEar:
         self._narrator = None
         self._stream = None
         self._queue: queue.Queue = queue.Queue()
-        self._awaiting_until = 0.0   # after a bare "Chirox", the next segment is the command
+        self._awaiting_until = 0.0   # retained for old sessions; bare wake no longer opens commands
         self._threshold: float | None = None  # room noise floor, once calibrated
+        self._reset_segmenter = False
         self._panic = threading.Event()  # Ctrl+Alt+0: silence everything NOW
         self._chat: list[tuple[str, str]] = []  # this sitting's conversation turns
         self.running = False
@@ -267,6 +271,7 @@ class ChiroxEar:
                 while not self._queue.empty():  # drop anything heard mid-speech
                     self._queue.get_nowait()
                 self._stream.start()
+            self._reset_segmenter = True
 
     @property
     def narrator(self):
@@ -369,7 +374,9 @@ class ChiroxEar:
         wav = VOICE_DIR / "_ear_segment.wav"
         wav.parent.mkdir(parents=True, exist_ok=True)
         sf.write(str(wav), np.concatenate(segment), self.SAMPLERATE)
-        return self.voice.transcribe(wav, initial_prompt=WHISPER_PROMPT)
+        # No wake-word prompt in the live room: biasing Whisper toward "Chirox"
+        # can hallucinate the wake word from unrelated speech.
+        return self.voice.transcribe(wav)
 
     # --- command handling ---------------------------------------------------------
 
@@ -407,6 +414,18 @@ class ChiroxEar:
         if kind == "day":
             self._say(self._answer_day())
             return True
+        if kind == "mode_training":
+            from chirox.activity import set_mode
+
+            set_mode("training")
+            self._say("Training mode.")
+            return True
+        if kind == "mode_learning":
+            from chirox.activity import set_mode
+
+            set_mode("learning")
+            self._say("Learning mode.")
+            return True
         if kind == "train":
             import subprocess
             import sys as _sys
@@ -441,6 +460,12 @@ class ChiroxEar:
         text = text.strip()
         if not text:
             return True
+        try:
+            from chirox.activity import update_activity
+
+            update_activity(last_heard=text)
+        except Exception:
+            pass
         woken, command = match_wake(text, self.aliases)
 
         # While a narration plays, the speakers are saying things like "Chirox" —
@@ -459,13 +484,9 @@ class ChiroxEar:
             print(f'[ear] wake word heard: "{text}"')
             if command:
                 return self.handle_command(command)
-            self._say("I am listening.")
-            self._awaiting_until = time.monotonic() + 12.0
-            return True
-        if time.monotonic() < self._awaiting_until:
+            self._say("Say my name and the command together.")
             self._awaiting_until = 0.0
-            print(f'[ear] command: "{text}"')
-            return self.handle_command(text)
+            return True
         print(f'[ear] (not for me) "{text}"')
         return True
 
@@ -496,6 +517,10 @@ class ChiroxEar:
             try:
                 while self.running:
                     block = self._queue.get()
+                    if self._reset_segmenter:
+                        segmenter.reset()
+                        self._reset_segmenter = False
+                        continue
                     segment = segmenter.push(block)
                     if segmenter.threshold is not None and segmenter._calib:
                         segmenter._calib = []

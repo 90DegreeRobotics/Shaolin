@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from chirox.calendar import dojo_day
 from chirox.config import CODEX_PATH, Config
@@ -17,9 +17,12 @@ from chirox.vision.tracker import default_model_path
 from chirox.web.live import LiveSessionManager, SessionConfig, camera_health, known_cameras
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+REFERENCE_DIR = Path(__file__).resolve().parents[1] / "reference"
 manager = LiveSessionManager()
 app = FastAPI(title="Chirox Live Mirror")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if REFERENCE_DIR.exists():
+    app.mount("/reference", StaticFiles(directory=REFERENCE_DIR), name="reference")
 
 
 @app.middleware("http")
@@ -151,12 +154,40 @@ class SpeakRequest(BaseModel):
     text: str
 
 
+class ModeRequest(BaseModel):
+    mode: str
+
+
+class LearningRecordRequest(BaseModel):
+    day_number: int
+    date: str | None = None
+    data: dict = Field(default_factory=dict)
+
+
 @app.get("/api/control/status")
 def control_status():
     from chirox.web import control
 
+    from chirox.activity import read_activity
+
     return {"ear": control.ear_status(), "voice": control.voice_activity(),
-            "codex": control.verify_codex()}
+            "codex": control.verify_codex(), "activity": read_activity()}
+
+
+@app.get("/api/mode")
+def get_mode():
+    from chirox.activity import read_activity
+
+    return read_activity()
+
+
+@app.post("/api/mode")
+def post_mode(req: ModeRequest):
+    from chirox.web.learning import switch_mode
+
+    if req.mode == "learning":
+        manager.stop_all()
+    return switch_mode(req.mode)
 
 
 @app.post("/api/control/ear/start")
@@ -194,11 +225,46 @@ def library_read(req: ReadRequest):
     return control.start_reading(req.label)
 
 
+@app.get("/api/learning")
+def learning_overview():
+    from chirox.web import learning
+
+    return learning.overview()
+
+
+@app.get("/api/learning/day/{day_number}")
+def learning_day(day_number: int):
+    from chirox.web import learning
+
+    return learning.record_day(day_number)
+
+
+@app.post("/api/learning/daily")
+def learning_save_daily(req: LearningRecordRequest):
+    from chirox.web import learning
+
+    return learning.save_daily(req.day_number, req.date, req.data)
+
+
+@app.post("/api/learning/mandarin")
+def learning_save_mandarin(req: LearningRecordRequest):
+    from chirox.web import learning
+
+    return learning.save_mandarin(req.day_number, req.date, req.data)
+
+
 @app.get("/api/train/catalog")
 def train_catalog():
-    from chirox.trainer import full_catalog
+    from chirox.web.guides import drill_guides
 
-    return {"drills": full_catalog()}
+    return {"drills": drill_guides()["drills"]}
+
+
+@app.get("/api/guides")
+def guides():
+    from chirox.web.guides import drill_guides
+
+    return drill_guides()
 
 
 @app.post("/api/train/start")

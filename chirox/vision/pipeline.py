@@ -17,14 +17,16 @@ from pathlib import Path
 
 from chirox.vision.schema import SessionAccumulator, VisionSession
 from chirox.vision.stances import (
-    LEFT_ANKLE, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER,
-    RIGHT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_SHOULDER,
+    LEFT_ANKLE, LEFT_ELBOW, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER, LEFT_WRIST,
+    RIGHT_ANKLE, RIGHT_ELBOW, RIGHT_HIP, RIGHT_KNEE, RIGHT_SHOULDER, RIGHT_WRIST,
     STANCES,
 )
 
 # MediaPipe BlazePose landmark indices -> Chirox joint names.
 _MP_INDEX = {
     11: LEFT_SHOULDER, 12: RIGHT_SHOULDER,
+    13: LEFT_ELBOW, 14: RIGHT_ELBOW,
+    15: LEFT_WRIST, 16: RIGHT_WRIST,
     23: LEFT_HIP, 24: RIGHT_HIP,
     25: LEFT_KNEE, 26: RIGHT_KNEE,
     27: LEFT_ANKLE, 28: RIGHT_ANKLE,

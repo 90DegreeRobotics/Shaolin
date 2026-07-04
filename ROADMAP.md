@@ -86,11 +86,13 @@ Done when:
 
 ## Phase 4: Chirox Dojo Pipeline
 
-Status: done within hardware limits (2026-07-03). The pipeline emits deterministic
+Status: done within hardware limits (2026-07-04). The pipeline emits deterministic
 session payloads (duration, knee/spine metrics, wobble via flags, uncertainty) and
-separates measurement from interpretation. Dual-camera simultaneous capture is
-hardware-verified (~22 fps each at 720p through the USB hub); three simultaneous
-streams collapse to 0 fps — measured, so the deck runs two live with a swap.
+separates measurement from interpretation. Dual-camera capture was measured on the
+rig, and the USB hub limit was identified, but the primary practitioner interface is
+now intentionally simple: one built-in-webcam mirror for live training. Multi-camera
+fusion returns only after the physical rig is calibrated well enough to improve
+confidence instead of increasing confusion.
 
 Goals:
 
@@ -128,7 +130,7 @@ Done when:
 
 ## Phase 6: The Embodied Master
 
-Status: built and verified in stages, 2026-07-02 → 2026-07-04.
+Status: built and verified in stages, 2026-07-02 -> 2026-07-04.
 
 Delivered, each with tests and a witnessed run:
 
@@ -140,13 +142,17 @@ Delivered, each with tests and a witnessed run:
 - spoken training caller (`chirox/trainer.py`) — least-practiced drill choice,
   corrections spoken only from deterministic geometry; form templates live in
   code from published standards, never captured from the practitioner's body
-- one-page control deck (`chirox/web/`) — toggle row, three camera boxes (two
-  live + swap), chips not typing; launched as its own app window from a desktop
-  shortcut; no terminal anywhere in the practitioner's path
+- mode-based browser app (`chirox/web/`) - **Training Mode** is a single
+  built-in-webcam wireframe mirror with reference exercise guidance and deterministic
+  truth states; **Learning Mode** is a study desk with Master Chirox conversation,
+  Piper/Whisper activity, read-along library, Mandarin focus, and day-by-day Dojo
+  Record editing; launched as its own app window from a desktop shortcut; no
+  terminal anywhere in the practitioner's path
 - wireframe accuracy audit tool (`chirox/vision/audit.py`)
 
 Remaining honest gates: wireframe noise-floor calibration (full-body still hold,
-unmeasured) and any third simultaneous camera (hub limit, measured).
+unmeasured) and any future calibrated multi-camera rig that proves it improves the
+journey instead of adding layout noise.
 
 ## Phase 7: Public Reviewed Release
 

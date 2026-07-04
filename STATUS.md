@@ -1,5 +1,5 @@
 # Status
-## Current Truth as of 2026-07-01
+## Current Truth as of 2026-07-04
 
 This repository is a public discipline manual **and** a working first version of
 the Chirox software system.
@@ -99,41 +99,30 @@ model; and two capabilities remain honestly gated on physical hardware.
   - `cli.py` — `chirox init | today | log | vision | record | timeline | review |
     debrief | sage | growth | say | listen | narrate | train | verify`. The CLI is
     the developer surface; the practitioner's surfaces are the deck and the voice.
-  - `web/` — a local-only cockpit (FastAPI on `127.0.0.1:8765`, opened as its
-    own app window by the desktop **Chirox** shortcut — no address bar, its own
-    clean browser profile, cache-proof by three layers): live
-    camera + skeleton overlay for front/side views, deterministic stance metrics,
-    and explicit Measured / Uncertain / No-body truth states. As of 2026-07-03 it
-    is the **full control deck** (`web/control.py`) — the practitioner never
-    needs a terminal or a text field: one toggle row (MIRROR · EAR · TRAIN ·
-    READ · RECORD · MASTER · SILENCE) drives everything; choices are chips, not
-    typing. **Three camera boxes**, two live at a time — measured hub truth
-    (2026-07-03): three simultaneous streams collapse to 0 fps even downscaled,
-    two hold 22 fps, so the third box is a one-click swap. The mirror yields
-    the camera automatically when training or recording starts. Verified live
-    in-browser: toggles drive real processes, wireframe and corrections stream
-    on a real body. All camera opens go
-    through `vision/capture.py`, which requests the full 16:9 wide view (1280x720,
-    hardware-verified on the rig's camera 0) instead of the cropped 640x480 default,
-    and picks the backend per device: camera 1 uses DirectShow because Media
-    Foundation takes ~40s to open it (measured 2026-07-03; the C920s stay on MSMF
-    for 30fps). The mirror launcher releases cameras gracefully before replacing
-    a running server.
-- `tests/` — 180 passing unit tests.
+  - `web/` - a local-only mode cockpit (FastAPI on `127.0.0.1:8765`, opened as its
+    own app window by the desktop **Chirox** shortcut - no address bar, its own
+    clean browser profile, cache-proof by three layers). **Training Mode** is the
+    current primary practice surface: one built-in-webcam mirror, wireframe overlay,
+    reference exercise guide, deterministic stance metrics, and explicit Measured /
+    Uncertain / No-body truth states. **Learning Mode** is the study surface:
+    conversation with Master Chirox, Piper/Whisper activity, read-along library,
+    Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
+    instead of silently rewriting history. The previous multi-camera control deck
+    remains a measured experiment, not the default practitioner path.
+- `tests/` - 188 passing unit tests.
 - `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
   proof artifacts (no personal data).
 
 ## What Is Honestly Gated (not yet proven)
 
-- ~~Live webcam session.~~ **Closed 2026-07-03:** two cameras streamed live in the
-  deck with the wireframe locked on the practitioner's real body and deterministic
-  corrections displayed ("stance collapsing", "spine slouching") — witnessed
-  in-browser. The front view honestly read Uncertain when only the upper body was
-  framed; the side view honestly read No body. The truth states work under fire.
-- ~~Synchronized multi-camera capture.~~ **Closed within hardware limits 2026-07-03:**
-  front + side ran simultaneously with live pose tracking. The measured ceiling is
-  two streams (three collapse to 0 fps through the hub); a fused two-camera
-  *verdict* (multicam aggregation over a live dual run) remains unexercised.
+- ~~Live webcam session.~~ **Closed 2026-07-03; simplified 2026-07-04:** the live
+  wireframe mirror is proven on real hardware. The current primary UI intentionally
+  uses only the built-in webcam (source 0) to keep practice simple and reliable.
+  External front/side/extra cameras remain possible backend experiments, not the
+  practitioner-facing default.
+- ~~Synchronized multi-camera primary cockpit.~~ **Retired 2026-07-04:** front + side
+  did run simultaneously, but the rig workflow created more confusion than value at
+  this stage. Multicam fusion returns only after calibration makes it earn its place.
 - **Voice conversation on the live mic.** The ear daemon runs on hardware, the wake
   loop passes self-test, and one full conversation round is verified against local
   Ollama — but a live spoken exchange (practitioner's voice → wake → answer) has

@@ -113,10 +113,23 @@ class Voice:
     def speak(self, text: str, out_wav: Path | None = None, play: bool = True) -> Path:
         out = Path(out_wav) if out_wav else (_voice_dir() / "_last_spoken.wav")
         out.parent.mkdir(parents=True, exist_ok=True)
+        spoken = speakable(text)
+        try:
+            from chirox.activity import update_activity
+
+            update_activity(last_spoken=spoken, piper_active=bool(play))
+        except Exception:
+            pass
         with wave.open(str(out), "wb") as wf:
-            self.piper.synthesize_wav(speakable(text), wf)
+            self.piper.synthesize_wav(spoken, wf)
         if play:
             self._play(out)
+            try:
+                from chirox.activity import update_activity
+
+                update_activity(piper_active=False)
+            except Exception:
+                pass
         return out
 
     @staticmethod

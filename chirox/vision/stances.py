@@ -50,7 +50,9 @@ class StanceReading:
 
 
 def _confidence(points: dict[str, Point], required: list[str]) -> float:
-    vis = [points[j][2] for j in required if j in points]
+    if any(j not in points for j in required):
+        return 0.0
+    vis = [points[j][2] for j in required]
     return min(vis) if vis else 0.0
 
 

@@ -226,14 +226,19 @@ def timeline(limit: int = 20) -> list[dict]:
 
 def ask_master(question: str | None) -> dict:
     from chirox.config import Config
-    from chirox.master.brain import MasterUnavailable, Ollama, debrief
+    from chirox.master.brain import MasterUnavailable, Ollama, converse, debrief, seal_exchange
 
     config = Config.load()
     ok, reason = Ollama(config).available()
     if not ok:
         return {"ok": False, "text": f"The Master is silent — he will not fabricate. {reason}"}
     try:
-        return {"ok": True, "text": debrief(config, question=question or None)}
+        if question and question.strip():
+            q = question.strip()
+            text = converse(config, question=q)
+            seal_exchange(q, text, config)
+            return {"ok": True, "text": text}
+        return {"ok": True, "text": debrief(config, question=None)}
     except MasterUnavailable as exc:
         return {"ok": False, "text": f"The Master is silent — he will not fabricate. {exc}"}
 

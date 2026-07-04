@@ -1,7 +1,7 @@
-// Chirox control deck — one page, a row of toggles, three camera boxes.
-// No terminal, no typing: every organ is a button; questions go by voice.
+// Chirox mode deck: training mirror, learning desk, and voice-driven controls.
+// No terminal in the practitioner's path; the browser is the working surface.
 
-const ROLES = ["front", "side", "extra"];
+const ROLES = ["front"];
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,12 +22,15 @@ for (const role of ROLES) {
 
 const state = {
   running: false,
-  pair: ["front", "side"],      // hub truth: two live streams, third swaps in
+  pair: ["front"],
   stance: "horse",
-  sources: { front: 0, side: 2, extra: 1 },
+  sources: { front: 0 },
   opacity: 0.9,
   startedAt: null,
   timer: null,
+  guides: { drills: new Map(), references: [] },
+  mode: "training",
+  recordDay: null,
 };
 
 const bones = [
@@ -212,9 +215,7 @@ function resetView(role) {
   view.lastState = "idle";
   view.conf.textContent = "--";
   view.assess.textContent = "";
-  view.msg.textContent = role === "extra" && !state.pair.includes("extra")
-    ? "Standby - the hub carries two live streams (measured)."
-    : "Ready.";
+  view.msg.textContent = "Ready.";
 }
 
 function startTimer() {
@@ -227,11 +228,8 @@ function startTimer() {
 
 async function mirrorOn() {
   ROLES.forEach(resetView);
-  const [a, b] = state.pair;
-  await post("/api/session/start", { source: state.sources[a], stance: state.stance, role: a });
-  await post("/api/session/start", { source: state.sources[b], stance: state.stance, role: b });
-  openSocket(a);
-  openSocket(b);
+  await post("/api/session/start", { source: state.sources.front, stance: state.stance, role: "front" });
+  openSocket("front");
   state.running = true;
   $("mirrorBtn").classList.add("on");
   startTimer();
@@ -248,20 +246,194 @@ async function mirrorOff() {
   setTruth("no-body", "Idle");
 }
 
-async function swapThird() {
-  const leaving = state.pair.includes("side") ? "side" : "extra";
-  const joining = leaving === "side" ? "extra" : "side";
-  if (state.running) {
-    closeSocket(leaving);
-    await post("/api/session/stop-role", { role: leaving });
-    await post("/api/session/start", {
-      source: state.sources[joining], stance: state.stance, role: joining,
-    });
-    openSocket(joining);
+// --- exercise guide ---------------------------------------------------------------
+
+function selectGuideImage(image) {
+  const img = $("guideImage");
+  if (!img || !image) return;
+  img.src = image.url;
+  img.alt = image.title || "Exercise reference";
+  document.querySelectorAll(".guide-thumb").forEach((b) => {
+    b.classList.toggle("sel", b.dataset.url === image.url);
+  });
+}
+
+function renderGuideRefs() {
+  const box = $("guideRefs");
+  if (!box) return;
+  box.innerHTML = "";
+  for (const ref of state.guides.references) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "guide-thumb";
+    btn.dataset.url = ref.url;
+    btn.title = ref.title;
+    const img = document.createElement("img");
+    img.src = ref.url;
+    img.alt = ref.title;
+    btn.append(img);
+    btn.addEventListener("click", () => selectGuideImage(ref));
+    box.append(btn);
   }
-  state.pair = ["front", joining];
-  $("swapBtn").textContent = `Swap live with ${joining === "extra" ? "Side" : "Extra"}`;
-  resetView(leaving);
+}
+
+function showGuide(key) {
+  const drill = state.guides.drills.get(key);
+  if (!drill) return;
+  $("guideName").textContent = drill.label || key;
+  $("guideInstruction").textContent = drill.instruction || "Move deliberately and keep the whole body in frame.";
+  $("guideKind").textContent = drill.kind === "reps" ? "Counted reps" : "Timed hold";
+  $("guideCamera").textContent = drill.camera_instruction || `Best camera: ${drill.view || "front"}.`;
+  $("guideTruth").textContent = drill.guide_title || "Measured by Chirox vision.";
+  if (drill.guide_image) selectGuideImage(drill.guide_image);
+}
+
+async function loadGuides() {
+  try {
+    const data = await (await fetch("/api/guides")).json();
+    state.guides.references = data.references || [];
+    state.guides.drills = new Map((data.drills || []).map((d) => [d.key, d]));
+    renderGuideRefs();
+    showGuide(state.stance);
+  } catch (err) {
+    $("guideInstruction").textContent = "Exercise guide unavailable.";
+  }
+}
+
+// --- modes + learning deck -------------------------------------------------------
+
+function applyMode(mode) {
+  state.mode = mode === "learning" ? "learning" : "training";
+  document.body.classList.toggle("mode-learning", state.mode === "learning");
+  document.body.classList.toggle("mode-training", state.mode !== "learning");
+  $("learningDeck").hidden = state.mode !== "learning";
+  $("trainingModeBtn").classList.toggle("sel", state.mode === "training");
+  $("learningModeBtn").classList.toggle("sel", state.mode === "learning");
+  if (state.mode === "learning" && state.running) mirrorOff();
+  if (state.mode === "learning") refreshLearning();
+}
+
+async function setMode(mode) {
+  const data = await post("/api/mode", { mode });
+  applyMode(data.mode || mode);
+}
+
+function updateActivity(activity) {
+  if (!activity) return;
+  if (activity.mode && activity.mode !== state.mode) applyMode(activity.mode);
+  $("piperText").textContent = activity.last_spoken || "No speech yet.";
+  $("whisperText").textContent = activity.last_heard || "Nothing heard yet.";
+  const reading = activity.reading || {};
+  $("readingTitle").textContent = activity.reading_title || "No book active";
+  $("readingProgress").textContent = reading.total_chunks
+    ? `${reading.chunk_index || 1}/${reading.total_chunks}` : "--";
+  $("readingChunk").textContent = reading.text || "Choose a book below to read along while Chirox speaks.";
+}
+
+function appendChat(who, text) {
+  const line = document.createElement("div");
+  line.className = "chat-line";
+  line.innerHTML = `<strong>${who}</strong><span></span>`;
+  line.querySelector("span").textContent = text;
+  $("chatLog").append(line);
+  $("chatLog").scrollTop = $("chatLog").scrollHeight;
+}
+
+function fillForm(formId, data) {
+  const form = $(formId);
+  for (const field of form.querySelectorAll("input, textarea")) {
+    field.value = data && data[field.name] !== undefined ? data[field.name] : (field.type === "number" ? "0" : "");
+  }
+}
+
+function collectForm(formId) {
+  const out = {};
+  for (const field of $(formId).querySelectorAll("input, textarea")) {
+    out[field.name] = field.value;
+  }
+  return out;
+}
+
+function showMandarinFocus(focus) {
+  if (!focus) return;
+  $("hanziChar").textContent = focus.character;
+  $("hanziPinyin").textContent = focus.pinyin;
+  $("hanziMeaning").textContent = focus.meaning;
+  $("hanziQuestion").textContent = focus.question;
+}
+
+function renderLearningBooks(items) {
+  const box = $("learningBooks");
+  box.innerHTML = "";
+  for (const item of items || []) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "book-chip";
+    btn.textContent = item.bookmark > 0 ? `${item.label} · ${item.bookmark}` : item.label;
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      await post("/api/library/read", { label: item.label });
+      setTimeout(() => { btn.disabled = false; refreshLearning(); refreshControl(); }, 1000);
+    });
+    box.append(btn);
+  }
+}
+
+function renderRecordDays(days) {
+  const box = $("recordDays");
+  box.innerHTML = "";
+  for (const day of days || []) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "day-chip";
+    btn.textContent = `Day ${day.day_number}${day.has_daily || day.has_mandarin ? " *" : ""}`;
+    btn.addEventListener("click", () => loadRecordDay(day.day_number));
+    box.append(btn);
+  }
+}
+
+function renderRecordDay(data) {
+  state.recordDay = data.day_number;
+  $("recordDay").value = data.day_number;
+  fillForm("dailyForm", data.daily || {});
+  fillForm("mandarinForm", data.mandarin || {});
+  showMandarinFocus(data.mandarin_focus);
+  const focus = data.mandarin_focus || {};
+  const charInput = document.querySelector("#mandarinForm [name='character_focus']");
+  if (charInput && !charInput.value) charInput.value = focus.character || "";
+}
+
+async function loadRecordDay(dayNumber) {
+  const data = await (await fetch(`/api/learning/day/${dayNumber}`)).json();
+  renderRecordDay(data);
+}
+
+async function saveLearningRecord(kind) {
+  const isDaily = kind === "daily";
+  const formId = isDaily ? "dailyForm" : "mandarinForm";
+  const url = isDaily ? "/api/learning/daily" : "/api/learning/mandarin";
+  const res = await post(url, {
+    day_number: Number($("recordDay").value || state.recordDay || 1),
+    data: collectForm(formId),
+  });
+  $("recordNote2").textContent = res.ok
+    ? `Sealed ${res.type} at seq ${res.seq}.`
+    : `Save failed: ${res.error || "unknown error"}`;
+  await refreshLearning();
+}
+
+async function refreshLearning() {
+  try {
+    const data = await (await fetch("/api/learning")).json();
+    updateActivity(data.activity);
+    renderLearningBooks(data.library);
+    renderRecordDays(data.days);
+    showMandarinFocus(data.mandarin_focus);
+    if (!state.recordDay && data.today) state.recordDay = data.today.day_number;
+    if (data.record && Number($("recordDay").value || 0) <= 1) renderRecordDay(data.record);
+  } catch (err) {
+    $("readingChunk").textContent = "Learning Mode data unavailable.";
+  }
 }
 
 // --- toggles -----------------------------------------------------------------------
@@ -277,6 +449,9 @@ function toggleStrip(btnId) {
   if (!nowHidden) $(btnId).classList.add("open");
 }
 
+$("trainingModeBtn").addEventListener("click", () => setMode("training"));
+$("learningModeBtn").addEventListener("click", () => setMode("learning"));
+
 $("mirrorBtn").addEventListener("click", () => (state.running ? mirrorOff() : mirrorOn()));
 
 $("earBtn").addEventListener("click", async () => {
@@ -289,6 +464,23 @@ $("silenceButton").addEventListener("click", async () => {
   await post("/api/control/silence");
   refreshControl();
 });
+
+$("masterAskBtn").addEventListener("click", async () => {
+  const q = $("masterQuestion").value.trim();
+  if (!q) return;
+  appendChat("You", q);
+  $("masterQuestion").value = "";
+  appendChat("Chirox", "Thinking from the record...");
+  const res = await post("/api/master/debrief", { question: q });
+  const lines = document.querySelectorAll(".chat-line span");
+  lines[lines.length - 1].textContent = res.text || "The Master could not be reached.";
+  if (res.ok && res.text) await post("/api/say", { text: res.text });
+  refreshControl();
+});
+
+$("loadDayBtn").addEventListener("click", () => loadRecordDay(Number($("recordDay").value || 1)));
+$("saveDailyBtn").addEventListener("click", () => saveLearningRecord("daily"));
+$("saveMandarinBtn").addEventListener("click", () => saveLearningRecord("mandarin"));
 
 for (const btnId of Object.keys(strips)) {
   $(btnId).addEventListener("click", (ev) => {
@@ -323,15 +515,20 @@ async function loadDrillCatalog() {
     const box = $("drillList");
     box.innerHTML = "";
     for (const d of data.drills) {
+      state.guides.drills.set(d.key, d);
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip drill-chip";
       chip.dataset.key = d.key;
       chip.textContent = d.kind === "reps" ? `${d.label} ×` : d.label;
       chip.title = `${d.kind === "reps" ? "Counted reps" : "Timed hold"} — best from the ${d.view} camera`;
-      chip.addEventListener("click", () => chip.classList.toggle("sel"));
+      chip.addEventListener("click", () => {
+        chip.classList.toggle("sel");
+        showGuide(d.key);
+      });
       box.append(chip);
     }
+    showGuide(state.stance);
   } catch (err) {
     $("drillList").textContent = "Catalog unavailable.";
   }
@@ -342,6 +539,7 @@ document.querySelectorAll(".st-chip").forEach((chip) => {
     document.querySelectorAll(".st-chip").forEach((c) => c.classList.remove("sel"));
     chip.classList.add("sel");
     state.stance = chip.dataset.st;
+    showGuide(state.stance);
     if (state.running) {  // apply the new stance to the live mirror
       await mirrorOff();
       await mirrorOn();
@@ -349,13 +547,19 @@ document.querySelectorAll(".st-chip").forEach((chip) => {
   });
 });
 
-$("swapBtn").addEventListener("click", swapThird);
+document.querySelectorAll(".ex-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const key = chip.dataset.stance || (chip.dataset.ex || "").replace(/_stance$/, "");
+    showGuide(key);
+  });
+});
 
 // --- organ launches ---------------------------------------------------------------
 
 $("trainGo").addEventListener("click", async () => {
   const stances = [...document.querySelectorAll(".drill-chip.sel")].map((c) => c.dataset.key);
   const seconds = Number(document.querySelector(".time-chip.sel").dataset.sec);
+  if (stances.length) showGuide(stances[0]);
   if (state.running) await mirrorOff();  // the trainer needs the camera
   const res = await post("/api/train/start", {
     stances: stances.length ? stances : null, seconds, drills: 3, source: state.sources.front,
@@ -369,7 +573,7 @@ $("trainGo").addEventListener("click", async () => {
 $("recordGo").addEventListener("click", async () => {
   const ex = document.querySelector(".ex-chip.sel");
   const minutes = Number(document.querySelector(".len-chip.sel").dataset.min);
-  const camRole = document.querySelector(".cam-chip.sel").dataset.role;
+  const camRole = "front";
   if (state.running) await mirrorOff();  // the recorder needs the camera
   const res = await post("/api/record/start", {
     exercise: ex.dataset.ex,
@@ -433,6 +637,7 @@ async function refreshControl() {
     $("trainBtn").classList.toggle("on", s.voice.active && s.voice.kind === "training");
     $("recordBtn").classList.toggle("on", Boolean(s.voice.recording));
     $("sysCodex").textContent = s.codex.ok ? `record intact (${s.codex.events})` : "RECORD BROKEN";
+    updateActivity(s.activity);
   } catch (err) { /* server briefly busy opening cameras - next poll catches up */ }
 }
 
@@ -472,15 +677,23 @@ window.addEventListener("beforeunload", () => {
   if (state.running) navigator.sendBeacon("/api/session/stop", "{}");
 });
 
+applyMode("training");
+fetch("/api/mode")
+  .then((r) => r.json())
+  .then((activity) => updateActivity(activity))
+  .catch(() => {});
+
 loadStatus()
   .catch(() => { $("standing").textContent = "Status unavailable"; })
   .finally(() => {
     const params = new URLSearchParams(window.location.search);
-    if (["dual", "all", "1"].includes(params.get("autostart"))) mirrorOn();
+    if (["dual", "all", "1"].includes(params.get("autostart")) && state.mode === "training") mirrorOn();
   });
 refreshControl();
 refreshLibrary();
 refreshTimeline();
+loadGuides();
 loadDrillCatalog();
 setInterval(refreshControl, 5000);
+setInterval(() => { if (state.mode === "learning") refreshLearning(); }, 2500);
 setInterval(refreshTimeline, 30000);

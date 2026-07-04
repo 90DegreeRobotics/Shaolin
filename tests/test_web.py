@@ -25,18 +25,65 @@ def test_static_frontend_served():
     response = client.get("/")
     assert response.status_code == 200
     text = response.text
-    # three camera boxes
+    # one built-in webcam mirror
     assert "frontCanvas" in text
-    assert "sideCanvas" in text
-    assert "extraCanvas" in text
+    assert "sideCanvas" not in text
+    assert "extraCanvas" not in text
+    assert "Built-in Webcam" in text
+    assert "guideName" in text
+    assert "guideImage" in text
+    assert "learningDeck" in text
+    assert "masterQuestion" in text
+    assert "dailyForm" in text
+    assert "mandarinForm" in text
+    assert "learningBooks" in text
     # the toggle row — one page runs everything, no terminal
     for toggle in ("mirrorBtn", "earBtn", "trainBtn", "readBtn",
                    "recordBtn", "masterBtn", "silenceButton"):
         assert toggle in text, toggle
-    # no typing required anywhere
-    assert 'type="text"' not in text
     # the browser must never show a stale cockpit after an update
     assert response.headers["cache-control"] == "no-cache, must-revalidate"
+
+
+def test_guides_endpoint_serves_catalog_and_references():
+    client = TestClient(app)
+    response = client.get("/api/guides")
+    assert response.status_code == 200
+    data = response.json()
+    assert {"references", "drills"} <= data.keys()
+    horse = next(d for d in data["drills"] if d["key"] == "horse")
+    assert horse["guide_kind"] == "stance"
+    assert horse["instruction"]
+    assert horse["camera_instruction"].startswith("Best camera:")
+    if data["references"]:
+        assert data["references"][0]["url"].startswith("/reference/")
+
+
+def test_mode_endpoint_defaults_to_known_mode():
+    client = TestClient(app)
+    response = client.get("/api/mode")
+    assert response.status_code == 200
+    assert response.json()["mode"] in {"training", "learning"}
+
+
+def test_learning_endpoint_shape():
+    client = TestClient(app)
+    response = client.get("/api/learning")
+    assert response.status_code == 200
+    data = response.json()
+    assert {"activity", "library", "mandarin_focus", "days", "record"} <= data.keys()
+    assert {"character", "pinyin", "meaning", "question"} <= data["mandarin_focus"].keys()
+    assert data["library"]
+
+
+def test_learning_day_endpoint_shape():
+    client = TestClient(app)
+    response = client.get("/api/learning/day/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["day_number"] == 1
+    assert "daily" in data and "mandarin" in data
+    assert data["mandarin_focus"]["character"] == "道"
 
 
 def test_serialize_reading_preserves_truth_fields():

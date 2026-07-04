@@ -14,13 +14,19 @@ The system is four honest machines:
 | **The Master** | Speaks about YOUR recorded evidence (local AI) | Fabricate — if his model is down, he says so |
 | **The Ear** | Always-on voice: say "Chirox…" and he answers | Send audio anywhere — everything stays on this laptop |
 
-**You never need a terminal.** Double-click the **Chirox** icon on your desktop
-— Chirox opens as its own app window (no browser tabs, no address bar). One
-toggle row runs everything: **MIRROR · EAR · TRAIN · READ · RECORD · MASTER ·
-SILENCE**. Green glow = running; click a lit toggle to stop it. Every choice is
-a tap-chip — there is not a single text field on the page. Voice covers the
-rest ("Chirox, train me"). The `chirox` commands shown below are the equivalent
-for anyone who *wants* a terminal; every one has a button or a voice phrase.
+**You never need a terminal.** Double-click the **Chirox** icon on your desktop:
+Chirox opens as its own app window (no browser tabs, no address bar) and starts
+in **Training Mode**. The first screen is the built-in-webcam mirror: one live
+camera, one wireframe guy, clear Measured / Uncertain / No-body truth states.
+
+The top mode switch matters:
+
+- **Training Mode** = mirror, exercise reference, live geometry, training controls.
+- **Learning Mode** = Master chat, Piper/Whisper activity, read-along library,
+  Mandarin focus, and day-by-day Dojo Record fields you can edit and save.
+
+The `chirox` commands shown below are the equivalent for anyone who *wants* a
+terminal; the desktop app and voice phrases are the normal path.
 
 ```powershell
 cd C:\Shaolin
@@ -40,13 +46,12 @@ chirox today                        # confirms your day number and today's focus
 
 ### 2. Set up the room
 
-Your rig, as measured on hardware:
+Your current reliable rig:
 
-- **Camera 0 = front, camera 2 = side, camera 1 = extra.** The deck shows all
-  three boxes, but the USB hub carries **two live streams at once** (measured:
-  two hold ~22 fps, a third collapses all to zero). The Extra box has a
-  one-click **Swap** button to trade it with the Side view.
-- **Stand 8–10 feet back.** The Mirror needs your WHOLE body — head to feet.
+- **Camera 0 = the built-in webcam mirror.** This is the primary Training Mode
+  view. External front/side/extra cameras are future calibrated-rig work, not the
+  default daily practice surface.
+- **Stand far enough back for the whole body.** The Mirror needs head to feet.
   If your feet are cut off, every stance number is worthless and the system
   will say `UNCERTAIN` instead of pretending. This is the #1 beginner mistake.
 - Light the room from the front, not behind you (a window behind you blinds it).
@@ -62,9 +67,12 @@ Then just talk, from anywhere in the room:
 - **"Chirox, what day is it?"** → your day number and phase (works offline, always)
 - **"Chirox, how deep should my horse stance be?"** → the Master answers from
   the manual and your record (needs Ollama running: `ollama serve`)
-- **"Chirox."** (just the name) → "I am listening." — then say your question
+- **"Chirox, training mode."** → the app returns to the mirror surface
+- **"Chirox, learning mode."** → the app switches to study mode
 - **"Chirox, go to sleep."** → he stops listening (or `.\Launch_Chirox_Voice.ps1 -Stop`)
 
+Say the name and the command together. A bare "Chirox" is not treated as an open
+microphone anymore, because random room audio was waking him at the wrong times.
 He pauses his ears while he talks, so he won't answer himself. If the Master's
 model is off, he'll tell you honestly instead of making something up.
 
@@ -108,7 +116,23 @@ chirox narrate --text "..." --pace 1.2      # slower, more deliberate pacing
 Playback starts within seconds no matter how big the file is — he synthesizes
 the next passage while speaking the current one.
 
-### 4. Calibrate the Mirror ONCE before trusting it
+### 4. Use Learning Mode for study
+
+Open the desktop app and click **Learning Mode** when the work is reading,
+reflection, or Dojo Record maintenance.
+
+Learning Mode shows:
+
+- a Master Chirox conversation panel
+- the latest Piper speech and Whisper hearing activity
+- the local reading library, with read-along text while Chirox speaks
+- today's Mandarin character, pinyin, meaning, and reflection question
+- a day picker with Daily Check-In and Mandarin Journal fields
+
+When you save a day, Chirox does **not** silently rewrite history. It seals a new
+version into the append-only Dojo Record, so future-you can see the path honestly.
+
+### 5. Calibrate the Mirror ONCE before trusting it
 
 Before you let numbers steer your training, measure the instrument itself:
 
@@ -158,8 +182,10 @@ nothing and says so.
 
 ### Training — record it, always
 
-Open the live Mirror if you want real-time feedback while you work: double-click
-the **Chirox** desktop icon and hit **MIRROR** (or it autostarts on launch).
+Open the live Mirror for real-time feedback while you work: double-click the
+**Chirox** desktop icon. Training Mode starts the built-in webcam mirror on
+launch. Pick the exercise/stance chips and keep the reference image visible so
+you know what shape you are trying to make before the numbers judge anything.
 
 Read the Mirror's three truth states like a traffic light:
 
@@ -167,8 +193,7 @@ Read the Mirror's three truth states like a traffic light:
 - **Uncertain** (amber) — it can see *something* but not well; fix framing, don't trust numbers
 - **No body** — it refuses to guess; step into frame
 
-For the permanent record, record your session (front camera shown; use
-`--source 2` for side view):
+For the permanent record, record your session from the built-in webcam:
 
 ```powershell
 # a static stance hold, with deterministic assessment:
@@ -183,9 +208,9 @@ into the Record. **Early sessions will look bad. Record them anyway.** The
 embarrassing day-12 video is what makes the day-200 video mean something.
 That is the whole point of the mirror that does not forget.
 
-> The cameras are shared — but the deck handles it: starting TRAIN or RECORD
-> from the page stops the mirror automatically. Only when mixing terminal
-> commands with the page do you need to stop the mirror yourself first.
+> The camera is shared — but the deck handles it: starting TRAIN or RECORD from
+> the page stops the mirror automatically. Only when mixing terminal commands
+> with the page do you need to stop the mirror yourself first.
 
 ### Evening — close the day (5 minutes)
 
@@ -248,7 +273,8 @@ Rules for dummies:
 | Everything says `UNCERTAIN` | Feet or head out of frame, or backlit. Step back, light from the front. |
 | The Master "is silent — he will not fabricate" | Ollama isn't running: `ollama serve` (and `ollama pull qwen2.5:14b-instruct` once). |
 | The Ear doesn't hear you | Check the mic: `chirox listen --once --no-speak`, say something, read the transcript. Also: he can't hear you while he's talking. |
-| Voice answers but never wakes | Say the name clearly at the start: "CHY-rocks". Check `chirox listen --self-test` passes. |
+| Voice answers but never wakes | Say the name clearly at the start of the command: "Chirox, what day is it?" Check `chirox listen --self-test` passes. |
+| Chirox wakes at weird times | Use full wake commands, not a bare name. The listener now only treats the name as intentional at the beginning of a command or after "hey/ok/okay." |
 | Want a clean restart of the Ear | `.\Launch_Chirox_Voice.ps1` (replaces the running one) |
 | **Shut him up NOW** | **Ctrl+Alt+0** — instantly silences whatever Chirox is saying, kills any reading or training session. Works from anywhere; no window focus needed. |
 | A reading won't stop | Say "Chirox, stop" clearly — or `chirox narrate` sessions: Ctrl+C; from voice: `.\Launch_Chirox_Voice.ps1 -Stop` stops the ear, and the reading runs out alone (kill `python.exe -m chirox.narrator` in Task Manager if needed). |

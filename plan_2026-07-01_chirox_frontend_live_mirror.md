@@ -3,10 +3,12 @@
 ## Status
 
 COMPLETED (2026-07-01) and then SUPERSEDED (2026-07-04): the cockpit was rebuilt
-as a one-page control deck — a toggle row (MIRROR · EAR · TRAIN · READ · RECORD ·
-MASTER · SILENCE), three camera boxes with two live at a time (measured hub
-limit), chips instead of typing, launched as its own app window from a desktop
-shortcut. This document records the original V1 plan.
+as a mode-based local app. **Training Mode** is now the primary surface: a single
+built-in-webcam mirror with wireframe overlay, reference exercise guidance, and
+deterministic truth states. **Learning Mode** is the study surface: Master chat,
+Piper/Whisper activity, read-along library, Mandarin focus, and day-by-day Dojo
+Record editing. The earlier multi-camera cockpit remains historical design
+context, not the current practitioner interface.
 
 ## Summary
 

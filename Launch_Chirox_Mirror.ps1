@@ -5,8 +5,9 @@ $ErrorActionPreference = "Stop"
 $repo = "C:\Shaolin"
 $python = Join-Path $repo ".venv\Scripts\python.exe"
 # Unique URL every launch: no browser can serve a cached copy of the page.
+# autostart=1 opens the current Training Mode mirror on the built-in webcam.
 $stamp = [DateTime]::Now.Ticks
-$url = "http://127.0.0.1:8765/?autostart=dual&t=$stamp"
+$url = "http://127.0.0.1:8765/?autostart=1&t=$stamp"
 
 if (-not (Test-Path -LiteralPath $python)) {
     throw "Chirox virtual environment was not found at $python"

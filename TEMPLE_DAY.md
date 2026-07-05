@@ -15,27 +15,86 @@ ends the day in stillness instead of stimulation.
 
 ## The Traditional Pattern (Reference)
 
+The full documented shape, annotated. Two vocations live inside one temple
+and one clock: the scholar monks (文僧 wénsēng), whose day centers on
+liturgy and scripture, and the warrior monks (武僧 wǔsēng), whose day
+centers on training. Both share the bells, the meals, the labor, and the
+evening stillness. Accounts differ in detail by era and source — this is the
+common skeleton, honestly labeled as a reconstruction, not a lineage claim.
+
 ```text
-05:00-05:30  Rise. Bell. No negotiation.
-05:30-06:30  Morning practice: running, basics, Qi Gong.
-06:30-07:30  Breakfast: congee. Eaten in silence.
-08:00-11:30  Work block: chores, study, or training drills.
-11:30-12:30  Lunch: the main meal of the day.
-12:30-14:00  Rest. Short nap permitted.
-14:00-17:00  Afternoon training: the hard session.
-17:30-18:30  Dinner: light.
-19:00-21:00  Evening: chanting, meditation, study.
-21:30        Lights out.
+~04:30-05:00  The board (打板 dǎbǎn) and bell circuit wake the compound.
+              Earlier in summer, later in deep winter. Rise, dress, assemble.
+05:00-06:00   First practice, by vocation:
+              - wénsēng: morning liturgy (早课 zǎokè) — sutra chanting in
+                the main hall, ~1 hour of voice, breath, and attention.
+              - wǔsēng: the morning run (跑山 pǎoshān) — mountain paths
+                and stone stairs, then basics in the training yard.
+06:00-06:30   Basics (基本功 jīběngōng) for the training track:
+              leg presses/stretching (压腿 yātuǐ), swinging kicks
+              (踢腿 tītuǐ), waist work (腰功 yāogōng), stance holds
+              (站桩 zhànzhuāng). Flexibility first, while the day is young.
+06:30-07:15   Breakfast (早斋 zǎozhāi): congee, steamed buns (馒头 mántou),
+              pickled vegetables. Taken as a formal meal (过堂 guòtáng):
+              silence, a verse of gratitude, nothing wasted, the bowl
+              finished clean. The meal is a ceremony of attention.
+07:15-08:00   Transition: cleaning of quarters and halls, duties assigned.
+08:00-11:30   The long morning block:
+              - wǔsēng: technique — basics drilled in lines by rank, forms
+                (套路 tàolù) repeated dozens of times, weapons (器械 qìxiè),
+                partner drills. Seniors correct juniors; teaching is duty.
+              - wénsēng: scripture study, recitation, calligraphy, temple
+                administration.
+              - all, in rotation: communal labor (出坡 chūpō) — fields,
+                kitchen, firewood, carrying water. The Chan farming rule of
+                Baizhang stands behind it: 一日不作，一日不食 — "a day
+                without work is a day without food." Labor IS practice.
+11:30-12:30   Lunch (午斋 wǔzhāi): the main meal — rice, vegetables, tofu,
+              soup. Formal guòtáng again. Strict vinaya observance stops
+              eating after noon (过午不食 guòwǔ bùshí); hard-training monks
+              take the evening meal anyway, and name it honestly (below).
+12:30-14:00   Midday rest (午休 wǔxiū): a nap, quiet reading, mending,
+              laundry. Scheduled, not stolen. The body absorbs the morning.
+14:00-17:00   Afternoon training — the hard session:
+              - conditioning: body hardening (排打 páidǎ), sandbag work,
+                iron-arm and iron-palm drills for seniors
+              - endurance: long stance holds, low walking, stair repeats
+              - forms at full intensity, corrected and repeated
+              - sparring (散打 sànda) by level and permission
+              - flexibility again at the end, while the body is warm
+17:00-17:30   Wash. Evening liturgy (晚课 wǎnkè) for the scholar track.
+17:30-18:30   Dinner: light — noodles, vegetables, broth. Called the
+              "medicine meal" (药石 yàoshí): eaten not for pleasure but as
+              medicine for a body that trains. The name itself is a teaching.
+19:00-21:00   Evening cultivation: seated meditation (坐禅 zuòchán), sutra
+              recitation, a master's instruction (开示 kāishì), and private
+              review of the day's corrections.
+21:00-21:30   Night bell and board circuit. The silence signal
+              (止静 zhǐjìng): talk ends, lamps go out, the compound rests.
 ```
 
-The pattern has three laws worth stealing:
+Rhythms above the day: on the new moon and full moon (初一 and 十五 of the
+lunar month) the schedule bends toward ceremony; festival days and retreat
+periods alter it further; summer rises earlier and winter later. The modern
+wushu schools around the mountain run secularized versions of the same
+skeleton — proof that the shape survives the removal of any single belief.
 
-1. **The body works before the world wakes.** The first session happens before
-   anything can interrupt it.
+The pattern has five laws worth stealing:
+
+1. **The body works before the world wakes.** The first session happens
+   before anything can interrupt it — and flexibility comes first, strength
+   later, every single day.
 2. **Food follows work.** The biggest meal sits beside the biggest effort;
-   the evening meal is small because the evening is quiet.
-3. **The day closes down, not up.** No stimulation after dark. The mind is
-   walked down to sleep like a horse cooled after a ride.
+   the evening meal is small, medicinal, and named so nobody lies about it.
+3. **Everything is practice.** Chanting trains breath. Meals train
+   attention. Chores train humility and the back. There is no dead time in
+   the day, only changes of form.
+4. **Rest is scheduled, not stolen.** The nap and the night silence sit in
+   the timetable with the same authority as the hard session. Recovery is
+   an appointment, not a lapse.
+5. **The day closes down, not up.** No stimulation after dark. The mind is
+   walked down to rest like a horse cooled after a ride, and the closing
+   bell is as absolute as the waking one.
 
 ## The Practitioner's Temple Day
 

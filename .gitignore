@@ -24,3 +24,7 @@ Dojo/witness/*.local.*
 
 # Local dev-tool configuration — not project content.
 .claude/
+
+# Forms: generated print artifacts and dated instances
+Forms/print/*.pdf
+Forms/print/weekly_review_week*.html

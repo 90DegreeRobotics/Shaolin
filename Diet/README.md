@@ -37,6 +37,11 @@ training load is involved — adapt with qualified help. Discipline, not dogma.
 
 Keep a fixed, boring, reliable pantry so choice fatigue never becomes an excuse.
 
+The full concrete catalog — every food by tier, meal templates, the congee
+formula, training-day snacks, the protein cheat sheet, and the weekly shopping
+skeleton — lives in [FOODS.md](FOODS.md). This section is the summary; that
+file is the list you shop and cook from.
+
 - **Grains:** rice, oats, barley, millet, whole-wheat noodles, simple bread.
 - **Legumes / protein:** lentils, chickpeas, black/adzuki beans, tofu, tempeh,
   edamame; eggs, fish, or lean meat as your conscious protein when needed.

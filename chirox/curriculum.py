@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from chirox.config import DIET_DOC, MANUAL_PATH
+from chirox.config import DIET_DOC, FOODS_DOC, MANDARIN_DOCS, MANUAL_PATH, TEMPLE_DOC
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 
@@ -22,6 +22,7 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 TOPIC_QUERIES = {
     "diet": "food hydration stimulants caffeine protein eat meal alcohol sugar plate",
     "food": "food hydration stimulants caffeine protein eat meal plate",
+    "foods": "foods catalog vegetables grains legumes fruit protein pantry shopping",
     "breath": "breath qi gong breathing brocades exhale inhale",
     "breathwork": "breath qi gong breathing brocades exhale inhale",
     "qigong": "qi gong breath brocades energy standing",
@@ -33,6 +34,14 @@ TOPIC_QUERIES = {
     "conduct": "ren confucian respect conduct relationship benevolence",
     "lifestyle": "living clothing food digital screens sleep recovery boundaries",
     "injury": "pain injury knee joint red yellow stop",
+    "mandarin": "mandarin pinyin tone character anki journal shadow aloud",
+    "pinyin": "pinyin tone initial final sandhi pronunciation syllable",
+    "characters": "character stroke radical hanzi write component",
+    "speaking": "speaking shadow record aloud tone monologue mandarin",
+    "vocabulary": "vocabulary hanzi pinyin stage word card",
+    "schedule": "temple day rise bell block session morning evening gate",
+    "routine": "temple day rise bell block session morning evening gate",
+    "temple": "temple day rise bell block session morning evening gate",
 }
 
 
@@ -51,22 +60,39 @@ class Section:
         return text[:max_chars].rsplit("\n", 1)[0].rstrip() + "\n…"
 
     def cite(self) -> str:
-        label = {"diet": "Diet lane"}.get(self.source, "manual")
+        label = {
+            "diet": "Diet lane",
+            "mandarin": "Mandarin lane",
+            "temple": "Temple day",
+        }.get(self.source, "manual")
         return f'{label} §"{self.title}"'
 
 
+# Default lane documents: source -> one path or a list of paths sharing the source.
+DEFAULT_LANE_DOCS: dict[str, Path | list[Path]] = {
+    "diet": [DIET_DOC, FOODS_DOC],
+    "temple": TEMPLE_DOC,
+    "mandarin": MANDARIN_DOCS,
+}
+
+
 class Curriculum:
-    def __init__(self, manual_path: Path | None = None, lane_docs: dict[str, Path] | None = None):
+    def __init__(
+        self,
+        manual_path: Path | None = None,
+        lane_docs: dict[str, Path | list[Path]] | None = None,
+    ):
         self.manual_path = Path(manual_path or MANUAL_PATH)
-        # source -> path for additional lane documents the Master grounds in.
-        self.lane_docs = lane_docs if lane_docs is not None else {"diet": DIET_DOC}
+        # source -> path(s) for additional lane documents the Master grounds in.
+        self.lane_docs = lane_docs if lane_docs is not None else DEFAULT_LANE_DOCS
         self.sections: list[Section] = self._parse_all()
 
     def _parse_all(self) -> list[Section]:
         sections: list[Section] = []
         idx = self._parse_doc(self.manual_path, "manual", sections, 0)
-        for source, path in self.lane_docs.items():
-            idx = self._parse_doc(Path(path), source, sections, idx)
+        for source, paths in self.lane_docs.items():
+            for path in paths if isinstance(paths, list) else [paths]:
+                idx = self._parse_doc(Path(path), source, sections, idx)
         return sections
 
     @staticmethod

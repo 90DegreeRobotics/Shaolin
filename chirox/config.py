@@ -28,6 +28,18 @@ MANUAL_PATH = REPO_ROOT / "1yeartoShaolin.md"
 
 # Lane documents also grounded in by the Master (curriculum extends over these).
 DIET_DOC = REPO_ROOT / "Diet" / "README.md"
+FOODS_DOC = REPO_ROOT / "Diet" / "FOODS.md"
+TEMPLE_DOC = REPO_ROOT / "TEMPLE_DAY.md"
+MANDARIN_DIR = REPO_ROOT / "Mandarin"
+MANDARIN_DOCS = [
+    MANDARIN_DIR / "README.md",
+    MANDARIN_DIR / "PINYIN.md",
+    MANDARIN_DIR / "CHARACTERS.md",
+    MANDARIN_DIR / "SPEAKING.md",
+    MANDARIN_DIR / "VOCABULARY.md",
+    MANDARIN_DIR / "CURRICULUM.md",
+    MANDARIN_DIR / "JOURNALING_METHOD.md",
+]
 
 # Private runtime data — git-ignored.
 DATA_DIR = REPO_ROOT / "Dojo" / "data"

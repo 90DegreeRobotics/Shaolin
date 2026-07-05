@@ -58,3 +58,32 @@ def test_diet_quarter_lookup_and_citation():
     assert q1 is not None and "stabilize" in q1.title.lower()
     assert q1.cite().startswith('Diet lane §"')
     assert CUR.diet_quarter(4) is not None
+
+
+def test_food_catalog_is_part_of_the_diet_lane():
+    titles = [s.title.lower() for s in CUR.sections if s.source == "diet"]
+    assert any("food catalog" in t for t in titles), "Diet/FOODS.md not indexed"
+
+
+def test_temple_day_lane_indexed_and_cited():
+    temple_secs = [s for s in CUR.sections if s.source == "temple"]
+    assert temple_secs, "TEMPLE_DAY.md not indexed"
+    assert any("morning gate" in s.title.lower() for s in temple_secs)
+    assert temple_secs[0].cite().startswith('Temple day §"')
+
+
+def test_mandarin_lane_indexed_and_cited():
+    man_secs = [s for s in CUR.sections if s.source == "mandarin"]
+    assert man_secs, "Mandarin lane not indexed"
+    joined = " ".join(s.title.lower() for s in man_secs)
+    assert "tone" in joined and "stroke" in joined
+
+    hits = CUR.topic("pinyin", limit=3)
+    assert any(s.source == "mandarin" for s in hits)
+    man_hit = next(s for s in hits if s.source == "mandarin")
+    assert man_hit.cite().startswith('Mandarin lane §"')
+
+
+def test_schedule_topic_surfaces_temple_day():
+    hits = CUR.topic("schedule", limit=3)
+    assert any(s.source == "temple" for s in hits)

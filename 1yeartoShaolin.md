@@ -111,6 +111,8 @@ The invariant is the smallest version of the path that still counts:
 
 This is the ember. Guard it. A year is not built by perfect days. It is built by refusing to let the ember go out.
 
+The full-shape day — the hour-by-hour structure modeled on the temple rhythm, with the training blocks, meals, Mandarin contacts, and the evening close — is maintained in [TEMPLE_DAY.md](TEMPLE_DAY.md). The invariant above is that day's collapsed form.
+
 ---
 
 ## The Shaolin Lifestyle: 24/7 Integration

@@ -130,7 +130,16 @@ model; and two capabilities remain honestly gated on physical hardware.
     clean browser profile, cache-proof by three layers). **Training Mode** is the
     current primary practice surface: one built-in-webcam mirror, wireframe overlay,
     reference exercise guide, deterministic stance metrics, and explicit Measured /
-    Uncertain / No-body truth states. **Learning Mode** is the study surface:
+    Uncertain / No-body truth states. **The Training Hall (2026-07-06):** the full
+    24-drill catalog lives ON the page (grouped: stances/balance, legs, floor/core,
+    qigong), each drill mapped by eye to its OWN chart among the practitioner's ten
+    posters (real printed titles, never "Reference N"); all ten charts sit on a
+    shelf and open in a fullscreen lightbox (arrow/ESC navigation) — reference
+    images at human scale, not thumbnails. The webcam mirror auto-starts in
+    Training Mode (skipped while the trainer or recorder holds the camera;
+    ?autostart=0 disables). **WAKE (2026-07-06):** one button starts Ollama if it
+    is down (spawns `ollama serve`, waits up to 15s, reports honestly if absent)
+    and sets the ear listening; Ollama state is part of /api/control/status. **Learning Mode** is the study surface:
     conversation with Master Chirox, Piper/Whisper activity, read-along library,
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck

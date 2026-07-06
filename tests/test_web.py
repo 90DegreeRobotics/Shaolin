@@ -41,6 +41,11 @@ def test_static_frontend_served():
     for toggle in ("mirrorBtn", "earBtn", "trainBtn", "readBtn",
                    "recordBtn", "masterBtn", "silenceButton"):
         assert toggle in text, toggle
+    # the Training Hall: the full catalog and all ten charts live ON the page,
+    # with a fullscreen viewer — reference images are for humans, not thumbnails
+    for element in ("trainingHall", "hallGroups", "chartShelf",
+                    "lightbox", "lbImage", "WAKE"):
+        assert element in text, element
     # the browser must never show a stale cockpit after an update
     assert response.headers["cache-control"] == "no-cache, must-revalidate"
 
@@ -57,6 +62,45 @@ def test_guides_endpoint_serves_catalog_and_references():
     assert horse["camera_instruction"].startswith("Best camera:")
     if data["references"]:
         assert data["references"][0]["url"].startswith("/reference/")
+
+
+def test_every_drill_maps_to_its_own_chart():
+    """No arbitrary poster assignment: each drill names a chart, the chart file
+    exists, and the chart carries its real printed title."""
+    from chirox.trainer import full_catalog
+    from chirox.web.guides import CHART_TITLES, DRILL_CHARTS, drill_guides
+
+    catalog_keys = {d["key"] for d in full_catalog()}
+    assert catalog_keys == set(DRILL_CHARTS), (
+        "every trainable drill needs an explicit chart mapping"
+    )
+    data = drill_guides()
+    if not data["references"]:  # charts not present in this environment
+        return
+    numbers_on_disk = {r["number"] for r in data["references"]}
+    for drill in data["drills"]:
+        assert drill["guide_image"] is not None, drill["key"]
+        expected = DRILL_CHARTS[drill["key"]]
+        if expected in numbers_on_disk:
+            assert drill["guide_image"]["number"] == expected, drill["key"]
+            assert drill["guide_image"]["title"] == CHART_TITLES[expected]
+
+
+def test_chart_titles_are_the_printed_poster_titles():
+    from chirox.web.guides import CHART_TITLES, reference_images
+
+    refs = reference_images()
+    if not refs:
+        return
+    assert len(refs) == 10, "the full poster set, never a subset"
+    titles = {r["title"] for r in refs}
+    assert "Qi Gong" in titles
+    assert "Balance" in titles
+    assert "Floor Work + Beginner Daily Circuit" in titles
+    assert not any(t.startswith("Reference ") for t in titles), (
+        "charts carry their real names, not placeholder numbers"
+    )
+    assert set(CHART_TITLES) == set(range(1, 11))
 
 
 def test_mode_endpoint_defaults_to_known_mode():

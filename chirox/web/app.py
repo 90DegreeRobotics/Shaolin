@@ -177,7 +177,8 @@ def control_status():
     from chirox.activity import read_activity
 
     return {"ear": control.ear_status(), "voice": control.voice_activity(),
-            "codex": control.verify_codex(), "activity": read_activity()}
+            "codex": control.verify_codex(), "activity": read_activity(),
+            "ollama": control.ollama_status()}
 
 
 @app.get("/api/mode")
@@ -194,6 +195,13 @@ def post_mode(req: ModeRequest):
     if req.mode == "learning":
         manager.stop_all()
     return switch_mode(req.mode)
+
+
+@app.post("/api/control/wake")
+def control_wake():
+    from chirox.web import control
+
+    return control.wake_master()
 
 
 @app.post("/api/control/ear/start")

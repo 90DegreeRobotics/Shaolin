@@ -91,6 +91,52 @@ def start_ear() -> dict:
     return {"running": True, "pid": pid}
 
 
+# --- waking the Master (Ollama + the ear, one button) ----------------------------
+
+
+def ollama_status() -> dict:
+    import requests
+
+    from chirox.config import Config
+
+    config = Config.load()
+    try:
+        r = requests.get(f"{config.ollama_url.rstrip('/')}/api/tags", timeout=2)
+        r.raise_for_status()
+        return {"running": True}
+    except Exception:
+        return {"running": False}
+
+
+def wake_master() -> dict:
+    """The practitioner presses ONE button: Ollama comes up if it is down,
+    then the ear starts listening. Honest result either way."""
+    import time
+
+    started_ollama = False
+    if not ollama_status()["running"]:
+        try:
+            subprocess.Popen(["ollama", "serve"], creationflags=_NO_WINDOW,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            started_ollama = True
+        except FileNotFoundError:
+            return {"ok": False, "ollama": {"running": False, "started": False},
+                    "ear": ear_status(),
+                    "error": "Ollama is not installed or not on PATH on this machine."}
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            if ollama_status()["running"]:
+                break
+            time.sleep(0.5)
+    ollama = {**ollama_status(), "started": started_ollama}
+    ear = start_ear()
+    ok = ollama["running"] and bool(ear.get("running"))
+    out = {"ok": ok, "ollama": ollama, "ear": ear}
+    if not ollama["running"]:
+        out["error"] = "Ollama did not come up within 15 seconds — check the installation."
+    return out
+
+
 def stop_ear() -> dict:
     pids = find_pids("chirox.listener")
     for pid in pids:

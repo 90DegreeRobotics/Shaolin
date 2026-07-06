@@ -246,34 +246,79 @@ async function mirrorOff() {
   setTruth("no-body", "Idle");
 }
 
-// --- exercise guide ---------------------------------------------------------------
+// --- exercise guide + the Training Hall ---------------------------------------------
 
 function selectGuideImage(image) {
   const img = $("guideImage");
   if (!img || !image) return;
   img.src = image.url;
   img.alt = image.title || "Exercise reference";
-  document.querySelectorAll(".guide-thumb").forEach((b) => {
-    b.classList.toggle("sel", b.dataset.url === image.url);
-  });
+  img.dataset.chartIndex = image.index;
 }
 
-function renderGuideRefs() {
-  const box = $("guideRefs");
+const HALL_GROUPS = [
+  { kinds: ["stance"], label: "Stances & Balance" },
+  { kinds: ["leg_strength"], label: "Legs & Conditioning" },
+  { kinds: ["floor"], label: "Floor & Core" },
+  { kinds: ["qigong"], label: "Qigong & Meditation" },
+];
+
+function renderTrainingHall() {
+  const box = $("hallGroups");
   if (!box) return;
   box.innerHTML = "";
+  const drills = [...state.guides.drills.values()];
+  for (const group of HALL_GROUPS) {
+    const members = drills.filter((d) => group.kinds.includes(d.guide_kind));
+    if (!members.length) continue;
+    const section = document.createElement("div");
+    section.className = "hall-group";
+    const head = document.createElement("h3");
+    head.textContent = `${group.label} (${members.length})`;
+    section.append(head);
+    const grid = document.createElement("div");
+    grid.className = "hall-grid";
+    for (const d of members) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hall-drill";
+      btn.dataset.key = d.key;
+      const name = document.createElement("strong");
+      name.textContent = d.label;
+      const meta = document.createElement("span");
+      meta.textContent = d.kind === "reps" ? "counted reps" : "timed hold";
+      btn.append(name, meta);
+      btn.title = d.guide_image ? `Chart: ${d.guide_image.title}` : d.label;
+      btn.addEventListener("click", () => showGuide(d.key));
+      grid.append(btn);
+    }
+    section.append(grid);
+    box.append(section);
+  }
+}
+
+function renderChartShelf() {
+  const shelf = $("chartShelf");
+  if (!shelf) return;
+  shelf.innerHTML = "";
+  if (!state.guides.references.length) {
+    shelf.textContent = "No charts found in chirox/reference.";
+    return;
+  }
   for (const ref of state.guides.references) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "guide-thumb";
-    btn.dataset.url = ref.url;
-    btn.title = ref.title;
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "chart-tile";
+    tile.title = `${ref.title} — click to fill the screen`;
     const img = document.createElement("img");
     img.src = ref.url;
     img.alt = ref.title;
-    btn.append(img);
-    btn.addEventListener("click", () => selectGuideImage(ref));
-    box.append(btn);
+    img.loading = "lazy";
+    const cap = document.createElement("span");
+    cap.textContent = ref.title;
+    tile.append(img, cap);
+    tile.addEventListener("click", () => openLightbox(ref.index));
+    shelf.append(tile);
   }
 }
 
@@ -284,8 +329,11 @@ function showGuide(key) {
   $("guideInstruction").textContent = drill.instruction || "Move deliberately and keep the whole body in frame.";
   $("guideKind").textContent = drill.kind === "reps" ? "Counted reps" : "Timed hold";
   $("guideCamera").textContent = drill.camera_instruction || `Best camera: ${drill.view || "front"}.`;
-  $("guideTruth").textContent = drill.guide_title || "Measured by Chirox vision.";
+  $("guideTruth").textContent = drill.guide_image ? drill.guide_image.title : (drill.guide_title || "Measured by Chirox vision.");
   if (drill.guide_image) selectGuideImage(drill.guide_image);
+  document.querySelectorAll(".hall-drill").forEach((b) => {
+    b.classList.toggle("sel", b.dataset.key === key);
+  });
 }
 
 async function loadGuides() {
@@ -293,12 +341,54 @@ async function loadGuides() {
     const data = await (await fetch("/api/guides")).json();
     state.guides.references = data.references || [];
     state.guides.drills = new Map((data.drills || []).map((d) => [d.key, d]));
-    renderGuideRefs();
+    renderTrainingHall();
+    renderChartShelf();
     showGuide(state.stance);
   } catch (err) {
     $("guideInstruction").textContent = "Exercise guide unavailable.";
   }
 }
+
+// --- lightbox: the charts at human scale ---------------------------------------------
+
+function openLightbox(index) {
+  const refs = state.guides.references;
+  if (!refs.length) return;
+  state.lightboxIndex = ((index % refs.length) + refs.length) % refs.length;
+  const ref = refs[state.lightboxIndex];
+  $("lbImage").src = ref.url;
+  $("lbImage").alt = ref.title;
+  $("lbTitle").textContent = ref.title;
+  $("lightbox").hidden = false;
+  document.body.classList.add("lightbox-open");
+}
+
+function closeLightbox() {
+  $("lightbox").hidden = true;
+  document.body.classList.remove("lightbox-open");
+}
+
+function stepLightbox(delta) {
+  if ($("lightbox").hidden) return;
+  openLightbox(state.lightboxIndex + delta);
+}
+
+$("lbClose").addEventListener("click", closeLightbox);
+$("lbPrev").addEventListener("click", () => stepLightbox(-1));
+$("lbNext").addEventListener("click", () => stepLightbox(1));
+$("lightbox").addEventListener("click", (ev) => {
+  if (ev.target === $("lightbox")) closeLightbox();
+});
+document.addEventListener("keydown", (ev) => {
+  if ($("lightbox").hidden) return;
+  if (ev.key === "Escape") closeLightbox();
+  if (ev.key === "ArrowLeft") stepLightbox(-1);
+  if (ev.key === "ArrowRight") stepLightbox(1);
+});
+$("guideImageWrap").addEventListener("click", () => {
+  const idx = Number($("guideImage").dataset.chartIndex);
+  if (!Number.isNaN(idx)) openLightbox(idx);
+});
 
 // --- modes + learning deck -------------------------------------------------------
 
@@ -311,6 +401,25 @@ function applyMode(mode) {
   $("learningModeBtn").classList.toggle("sel", state.mode === "learning");
   if (state.mode === "learning" && state.running) mirrorOff();
   if (state.mode === "learning") refreshLearning();
+  if (state.mode === "training") maybeAutoMirror();
+}
+
+// Training mode means training: the webcam comes up by itself unless another
+// organ (trainer, recorder) holds the camera. ?autostart=0 disables.
+async function maybeAutoMirror() {
+  if (state.mode !== "training" || state.running || state.autoMirrorBlocked) return;
+  if (state.autoMirrorInFlight) return;
+  state.autoMirrorInFlight = true;
+  try {
+    const s = await (await fetch("/api/control/status")).json();
+    const busy = (s.voice && s.voice.active && s.voice.kind === "training") ||
+                 (s.voice && s.voice.recording);
+    if (!busy && state.mode === "training" && !state.running) await mirrorOn();
+  } catch (err) {
+    /* camera can be retried on the next mode switch */
+  } finally {
+    state.autoMirrorInFlight = false;
+  }
 }
 
 async function setMode(mode) {
@@ -502,10 +611,24 @@ $("learningModeBtn").addEventListener("click", () => setMode("learning"));
 
 $("mirrorBtn").addEventListener("click", () => (state.running ? mirrorOff() : mirrorOn()));
 
+// WAKE: one press brings Ollama up (if it is down) and sets the ear listening.
 $("earBtn").addEventListener("click", async () => {
-  const on = $("earBtn").classList.contains("on");
-  await post(on ? "/api/control/ear/stop" : "/api/control/ear/start");
-  setTimeout(refreshControl, 1200);
+  const btn = $("earBtn");
+  if (btn.classList.contains("on")) {
+    await post("/api/control/ear/stop");
+    setTimeout(refreshControl, 1200);
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "WAKING…";
+  try {
+    const res = await post("/api/control/wake");
+    if (!res.ok && res.error) alert(res.error);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "WAKE";
+    setTimeout(refreshControl, 1200);
+  }
 });
 
 $("silenceButton").addEventListener("click", async () => {
@@ -739,6 +862,9 @@ window.addEventListener("beforeunload", () => {
   if (state.running) navigator.sendBeacon("/api/session/stop", "{}");
 });
 
+const params = new URLSearchParams(window.location.search);
+state.autoMirrorBlocked = params.get("autostart") === "0";
+
 applyMode("training");
 fetch("/api/mode")
   .then((r) => r.json())
@@ -747,10 +873,7 @@ fetch("/api/mode")
 
 loadStatus()
   .catch(() => { $("standing").textContent = "Status unavailable"; })
-  .finally(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (["dual", "all", "1"].includes(params.get("autostart")) && state.mode === "training") mirrorOn();
-  });
+  .finally(() => { maybeAutoMirror(); });
 refreshControl();
 refreshLibrary();
 refreshTimeline();

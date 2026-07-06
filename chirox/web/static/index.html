@@ -6,7 +6,7 @@
     <title>Chirox</title>
     <link rel="icon" href="/static/chirox.ico">
     <!-- versioned asset URLs: an old cached copy can never be reused -->
-    <link rel="stylesheet" href="/static/styles.css?v=8">
+    <link rel="stylesheet" href="/static/styles.css?v=9">
   </head>
   <body>
     <header class="topbar">
@@ -20,7 +20,7 @@
       </nav>
       <nav class="toggles">
         <button id="mirrorBtn" class="toggle" type="button">MIRROR</button>
-        <button id="earBtn" class="toggle" type="button">EAR</button>
+        <button id="earBtn" class="toggle" type="button" title="Start Ollama and set Master Chirox listening">WAKE</button>
         <button id="trainBtn" class="toggle" type="button">TRAIN</button>
         <button id="readBtn" class="toggle" type="button">READ</button>
         <button id="recordBtn" class="toggle" type="button">RECORD</button>
@@ -78,10 +78,10 @@
           <span id="guideTruth">Measured by Chirox vision.</span>
         </div>
       </div>
-      <div class="guide-image-wrap">
+      <div class="guide-image-wrap" id="guideImageWrap" title="Click to fill the screen">
         <img id="guideImage" alt="Exercise reference" src="">
+        <span class="zoom-hint">CLICK TO ENLARGE</span>
       </div>
-      <div id="guideRefs" class="guide-refs" aria-label="Reference images"></div>
     </section>
 
     <main class="cams mirror-stage">
@@ -92,6 +92,19 @@
         <div id="frontAssess" class="cam-assess"></div>
       </article>
     </main>
+
+    <section class="hall" id="trainingHall" aria-label="The Training Hall">
+      <div class="hall-head">
+        <span class="strip-label">The Training Hall</span>
+        <span class="note">Every measurable drill. Click one for its chart; click any chart to fill the screen.</span>
+      </div>
+      <div id="hallGroups" class="hall-groups">Loading the catalog&hellip;</div>
+      <div class="hall-head charts-head">
+        <span class="strip-label">The Ten Charts</span>
+        <span class="note">Your full reference set &mdash; mobility, cardio, movement drills and all.</span>
+      </div>
+      <div id="chartShelf" class="chart-shelf">Loading the charts&hellip;</div>
+    </section>
 
     <main id="learningDeck" class="learning-deck" hidden>
       <section class="learn-card chat-card">
@@ -203,6 +216,16 @@
       <div id="timelineList" class="timeline-mini">Loadingâ€¦</div>
     </footer>
 
-    <script src="/static/app.js?v=8"></script>
+    <div id="lightbox" class="lightbox" hidden>
+      <button id="lbClose" class="lb-close" type="button" aria-label="Close">&times;</button>
+      <button id="lbPrev" class="lb-nav lb-prev" type="button" aria-label="Previous chart">&lsaquo;</button>
+      <figure>
+        <img id="lbImage" src="" alt="Reference chart">
+        <figcaption id="lbTitle"></figcaption>
+      </figure>
+      <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next chart">&rsaquo;</button>
+    </div>
+
+    <script src="/static/app.js?v=9"></script>
   </body>
 </html>

@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from chirox.calendar import dojo_day
-from chirox.config import CODEX_PATH, Config
+from chirox.config import CODEX_PATH, MEDIA_DIR, Config
 from chirox.record.codex import Codex
 from chirox.vision.tracker import default_model_path
 from chirox.web.live import LiveSessionManager, SessionConfig, camera_health, known_cameras
@@ -23,6 +23,8 @@ app = FastAPI(title="Chirox Live Mirror")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 if REFERENCE_DIR.exists():
     app.mount("/reference", StaticFiles(directory=REFERENCE_DIR), name="reference")
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 
 @app.middleware("http")
@@ -309,6 +311,31 @@ def get_timeline(limit: int = 20):
     from chirox.web import control
 
     return {"events": control.timeline(limit)}
+
+
+@app.get("/api/recordings")
+def recordings(limit: int = 30):
+    from chirox.web import control
+
+    return control.list_recordings(limit)
+
+
+class OpenRecordingRequest(BaseModel):
+    file: str
+
+
+@app.post("/api/recordings/open")
+def recordings_open(req: OpenRecordingRequest):
+    from chirox.web import control
+
+    return control.open_recording(req.file)
+
+
+@app.post("/api/recordings/folder")
+def recordings_folder():
+    from chirox.web import control
+
+    return control.open_media_folder()
 
 
 @app.post("/api/master/debrief")

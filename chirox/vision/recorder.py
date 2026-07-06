@@ -126,7 +126,12 @@ def record_session(exercise: str, source=0, seconds: float | None = None, stance
     fps = cap.get(cv2.CAP_PROP_FPS) or fps_fallback
     if fps <= 0:
         fps = fps_fallback
-    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+    # H.264 (avc1) when the OpenCV build can encode it — those files play in the
+    # cockpit's own browser player. mp4v is the fallback; it always writes, and
+    # the system player handles it either way.
+    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height))
+    if not writer.isOpened():
+        writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 
     tracker = PoseTracker()
     acc = SessionAccumulator(stance, str(source)) if stance else None

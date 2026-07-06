@@ -289,7 +289,10 @@ function renderTrainingHall() {
       meta.textContent = d.kind === "reps" ? "counted reps" : "timed hold";
       btn.append(name, meta);
       btn.title = d.guide_image ? `Chart: ${d.guide_image.title}` : d.label;
-      btn.addEventListener("click", () => showGuide(d.key));
+      btn.addEventListener("click", () => {
+        showGuide(d.key);
+        if (d.kind === "hold") setTrackedStance(d.key, d.label);
+      });
       grid.append(btn);
     }
     section.append(grid);
@@ -349,6 +352,18 @@ async function loadGuides() {
   }
 }
 
+// The mirror follows the practitioner: any hold picked in the Training Hall
+// becomes the stance the live wireframe measures.
+async function setTrackedStance(key, label) {
+  if (state.stance === key) return;
+  state.stance = key;
+  $("trackedStance").textContent = label || key;
+  if (state.running) {
+    await mirrorOff();
+    await mirrorOn();
+  }
+}
+
 // --- lightbox: the charts at human scale ---------------------------------------------
 
 function openLightbox(index) {
@@ -356,6 +371,11 @@ function openLightbox(index) {
   if (!refs.length) return;
   state.lightboxIndex = ((index % refs.length) + refs.length) % refs.length;
   const ref = refs[state.lightboxIndex];
+  const video = $("lbVideo");
+  video.pause();
+  video.hidden = true;
+  video.removeAttribute("src");
+  $("lbImage").hidden = false;
   $("lbImage").src = ref.url;
   $("lbImage").alt = ref.title;
   $("lbTitle").textContent = ref.title;
@@ -363,7 +383,22 @@ function openLightbox(index) {
   document.body.classList.add("lightbox-open");
 }
 
+function openVideo(url, title) {
+  const video = $("lbVideo");
+  $("lbImage").hidden = true;
+  $("lbImage").removeAttribute("src");
+  video.hidden = false;
+  video.src = url;
+  video.play().catch(() => { /* codec not browser-playable; OPEN still works */ });
+  $("lbTitle").textContent = title;
+  $("lightbox").hidden = false;
+  document.body.classList.add("lightbox-open");
+}
+
 function closeLightbox() {
+  const video = $("lbVideo");
+  video.pause();
+  video.removeAttribute("src");
   $("lightbox").hidden = true;
   document.body.classList.remove("lightbox-open");
 }
@@ -719,19 +754,6 @@ async function loadDrillCatalog() {
   }
 }
 
-document.querySelectorAll(".st-chip").forEach((chip) => {
-  chip.addEventListener("click", async () => {
-    document.querySelectorAll(".st-chip").forEach((c) => c.classList.remove("sel"));
-    chip.classList.add("sel");
-    state.stance = chip.dataset.st;
-    showGuide(state.stance);
-    if (state.running) {  // apply the new stance to the live mirror
-      await mirrorOff();
-      await mirrorOn();
-    }
-  });
-});
-
 document.querySelectorAll(".ex-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     const key = chip.dataset.stance || (chip.dataset.ex || "").replace(/_stance$/, "");
@@ -823,8 +845,91 @@ async function refreshControl() {
     $("recordBtn").classList.toggle("on", Boolean(s.voice.recording));
     $("sysCodex").textContent = s.codex.ok ? `record intact (${s.codex.events})` : "RECORD BROKEN";
     updateActivity(s.activity);
+    updateRecording(s.voice);
   } catch (err) { /* server briefly busy opening cameras - next poll catches up */ }
 }
+
+// --- recording: unmistakable state, a STOP that works, files you can find -------------
+
+function updateRecording(voice) {
+  const wasRecording = Boolean(state.recording);
+  const info = (voice && voice.recording_info) || {};
+  state.recording = Boolean(voice && voice.recording);
+  state.recStartedMs = info.started ? Date.parse(info.started) : state.recStartedMs;
+  $("recBanner").hidden = !state.recording;
+  if (state.recording) {
+    $("recWhat").textContent = (info.exercise || "").replace(/_/g, " ");
+    tickRecElapsed();
+  }
+  if (wasRecording && !state.recording) {
+    // a recording just finished (or was stopped): show it, bring the mirror back
+    refreshRecordings();
+    maybeAutoMirror();
+  }
+}
+
+function tickRecElapsed() {
+  if (!state.recording || !state.recStartedMs) return;
+  const s = Math.max(0, Math.floor((Date.now() - state.recStartedMs) / 1000));
+  $("recElapsed").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+setInterval(tickRecElapsed, 1000);
+
+$("recStopBtn").addEventListener("click", async () => {
+  await post("/api/record/stop");
+  setTimeout(refreshControl, 800);
+});
+
+async function refreshRecordings() {
+  try {
+    const data = await (await fetch("/api/recordings")).json();
+    $("mediaFolder").textContent = data.folder || "";
+    const box = $("recordingsList");
+    box.innerHTML = "";
+    if (!data.items || !data.items.length) {
+      box.textContent = "No recordings yet. Press RECORD, train, and the video lands here.";
+      return;
+    }
+    for (const r of data.items) {
+      const row = document.createElement("div");
+      row.className = "recording-row";
+      const info = document.createElement("div");
+      info.className = "recording-info";
+      const name = document.createElement("strong");
+      name.textContent = (r.exercise || "unknown").replace(/_/g, " ");
+      const meta = document.createElement("span");
+      const bits = [];
+      if (r.day_number) bits.push(`day ${r.day_number}`);
+      if (r.date) bits.push(r.date);
+      if (r.duration_s) bits.push(`${Math.round(r.duration_s)}s`);
+      bits.push(`${r.size_mb} MB`);
+      if (!r.sealed) bits.push("not sealed (stopped early)");
+      meta.textContent = bits.join(" · ");
+      const path = document.createElement("span");
+      path.className = "recording-path";
+      path.textContent = r.file;
+      info.append(name, meta, path);
+      const play = document.createElement("button");
+      play.type = "button";
+      play.className = "chip";
+      play.textContent = "PLAY";
+      play.title = "Play here in the cockpit";
+      play.addEventListener("click", () => openVideo(r.url, `${name.textContent} — ${meta.textContent}`));
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "chip";
+      open.textContent = "OPEN";
+      open.title = "Open in the system video player";
+      open.addEventListener("click", () => post("/api/recordings/open", { file: r.file }));
+      row.append(info, play, open);
+      box.append(row);
+    }
+  } catch (err) {
+    $("recordingsList").textContent = "Recordings unavailable.";
+  }
+}
+
+$("openFolderBtn").addEventListener("click", () => post("/api/recordings/folder"));
 
 async function refreshTimeline() {
   try {
@@ -877,6 +982,7 @@ loadStatus()
 refreshControl();
 refreshLibrary();
 refreshTimeline();
+refreshRecordings();
 loadGuides();
 loadDrillCatalog();
 setInterval(refreshControl, 5000);

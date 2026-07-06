@@ -157,9 +157,10 @@ def voice_activity() -> dict:
         cmds = {p: c for p, c in list_python_processes()}
         cmd = cmds.get(pid, "")
         kind = "training" if "chirox.trainer" in cmd else "reading"
-    rec = find_pids("chirox.cli record") or find_pids('"record"')
+    rec_info = recording_status()
+    rec = rec_info["recording"] or bool(find_pids("chirox.cli record") or find_pids('"record"'))
     return {"active": pid is not None, "pid": pid, "kind": kind,
-            "recording": bool(rec)}
+            "recording": rec, "recording_info": rec_info}
 
 
 def silence() -> dict:
@@ -220,6 +221,35 @@ def start_training(stances: list[str] | None, seconds: int, drills: int, source:
 
 # --- recording -----------------------------------------------------------------------------
 
+# The recording marker: the single honest answer to "am I being recorded?".
+# Written on start, cleared on stop; a dead pid invalidates it automatically.
+
+
+def _recording_marker():
+    from chirox.config import DATA_DIR
+
+    return DATA_DIR / "recording_status.json"
+
+
+def recording_status() -> dict:
+    """Is a recording running RIGHT NOW — and of what, since when?"""
+    marker = _recording_marker()
+    if not marker.exists():
+        return {"recording": False}
+    try:
+        info = json.loads(marker.read_text(encoding="utf-8"))
+    except Exception:
+        return {"recording": False}
+    alive = any(pid == info.get("pid") for pid, _ in list_python_processes())
+    if not alive:
+        try:
+            marker.unlink()
+        except OSError:
+            pass
+        return {"recording": False}
+    return {"recording": True, "exercise": info.get("exercise"),
+            "started": info.get("started"), "seconds": info.get("seconds")}
+
 
 def stop_recording() -> dict:
     """Kill a recording early. Honest consequence: the video file survives but
@@ -228,11 +258,17 @@ def stop_recording() -> dict:
             if "chirox.cli" in cmd and "record" in cmd]
     for pid in pids:
         terminate(pid)
+    try:
+        _recording_marker().unlink()
+    except OSError:
+        pass
     return {"stopped": len(pids),
-            "note": "Recording aborted - video kept, manifest not sealed." if pids else "No recording was running."}
+            "note": "Recording stopped - video kept, manifest not sealed." if pids else "No recording was running."}
 
 
 def start_recording(exercise: str, source: str, seconds: int, stance: str | None) -> dict:
+    from datetime import datetime, timezone
+
     if not exercise.strip():
         return {"ok": False, "error": "exercise name is required"}
     safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in exercise.strip().lower())
@@ -241,7 +277,80 @@ def start_recording(exercise: str, source: str, seconds: int, stance: str | None
     if stance:
         args += ["--stance", stance]
     pid = _spawn(args)
-    return {"ok": True, "exercise": safe, "pid": pid}
+    marker = _recording_marker()
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps({
+        "exercise": safe, "pid": pid, "seconds": seconds,
+        "started": datetime.now(timezone.utc).isoformat(),
+    }), encoding="utf-8")
+    return {"ok": True, "exercise": safe, "pid": pid, "seconds": seconds}
+
+
+def list_recordings(limit: int = 30) -> dict:
+    """Every training video in the archive, newest first — sealed manifests
+    joined to the files so the practitioner sees date, day, duration, size,
+    and exactly where the file lives."""
+    from urllib.parse import quote
+
+    from chirox.config import CODEX_PATH, MEDIA_DIR
+    from chirox.record.codex import Codex
+
+    manifests: dict[str, dict] = {}
+    for e in Codex(CODEX_PATH).events("session_recording"):
+        p = e.payload
+        try:
+            key = str(Path(p.get("video_path", "")).resolve())
+        except OSError:
+            continue
+        manifests[key] = p
+
+    items = []
+    if MEDIA_DIR.exists():
+        for f in MEDIA_DIR.rglob("*.mp4"):
+            rel = f.relative_to(MEDIA_DIR)
+            m = manifests.get(str(f.resolve()))
+            stat = f.stat()
+            items.append({
+                "file": str(rel).replace("\\", "/"),
+                "url": "/media/" + quote(str(rel).replace("\\", "/")),
+                "exercise": m.get("exercise") if m else rel.parts[0] if len(rel.parts) > 1 else "unknown",
+                "date": m.get("date") if m else None,
+                "day_number": m.get("day_number") if m else None,
+                "duration_s": m.get("duration_s") if m else None,
+                "size_mb": round(stat.st_size / (1024 * 1024), 1),
+                "modified": stat.st_mtime,
+                "sealed": m is not None,
+            })
+    items.sort(key=lambda r: r["modified"], reverse=True)
+    return {"ok": True, "folder": str(MEDIA_DIR), "items": items[:limit]}
+
+
+def open_recording(file: str) -> dict:
+    """Open one recording in the system player — playback that always works,
+    whatever codec the writer used."""
+    import os
+
+    from chirox.config import MEDIA_DIR
+
+    target = (MEDIA_DIR / file).resolve()
+    if not str(target).startswith(str(MEDIA_DIR.resolve())) or not target.exists():
+        return {"ok": False, "error": "no such recording"}
+    if sys.platform == "win32":
+        os.startfile(str(target))  # noqa: S606 — local operator opening his own file
+        return {"ok": True}
+    return {"ok": False, "error": "opening files is only wired for Windows"}
+
+
+def open_media_folder() -> dict:
+    import os
+
+    from chirox.config import MEDIA_DIR
+
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "win32":
+        os.startfile(str(MEDIA_DIR))  # noqa: S606
+        return {"ok": True, "folder": str(MEDIA_DIR)}
+    return {"ok": False, "folder": str(MEDIA_DIR), "error": "only wired for Windows"}
 
 
 # --- record & master --------------------------------------------------------------------

@@ -84,14 +84,35 @@
       </div>
     </section>
 
+    <div id="recBanner" class="rec-banner" hidden>
+      <span class="rec-dot"></span>
+      <strong>RECORDING</strong>
+      <span id="recWhat"></span>
+      <span id="recElapsed">0:00</span>
+      <span class="note">saving to Dojo/media — it appears under Recordings when done</span>
+      <button id="recStopBtn" type="button">STOP RECORDING</button>
+    </div>
+
     <main class="cams mirror-stage">
       <article class="cam-box" id="frontBox">
-        <div class="cam-label"><strong>Built-in Webcam</strong><span id="frontConf">--</span></div>
+        <div class="cam-label"><strong>Live Mirror</strong>
+          <span class="mirror-note">nothing is saved &mdash; tracking: <em id="trackedStance">Horse Stance (Ma Bu)</em></span>
+          <span id="frontConf">--</span></div>
         <canvas id="frontCanvas" width="640" height="360"></canvas>
         <div id="frontMsg" class="cam-msg">Ready.</div>
         <div id="frontAssess" class="cam-assess"></div>
       </article>
     </main>
+
+    <section class="recordings" id="recordingsCard" aria-label="Recordings">
+      <div class="hall-head">
+        <span class="strip-label">Recordings</span>
+        <span class="note">Your training videos. RECORD starts one; STOP ends it early (video kept).</span>
+        <span id="mediaFolder" class="note folder-note"></span>
+        <button id="openFolderBtn" class="chip" type="button">OPEN FOLDER</button>
+      </div>
+      <div id="recordingsList" class="recordings-list">Loading&hellip;</div>
+    </section>
 
     <section class="hall" id="trainingHall" aria-label="The Training Hall">
       <div class="hall-head">
@@ -204,16 +225,13 @@
     <footer class="deck-foot">
       <div class="foot-left">
         <div id="truthState" class="truth no-body">Idle</div>
-        <span class="strip-label">Stance</span>
-        <button class="chip st-chip sel" data-st="horse" type="button">Horse</button>
-        <button class="chip st-chip" data-st="bow" type="button">Bow</button>
-        <button class="chip st-chip" data-st="crane" type="button">Crane</button>
+        <span class="note">Pick any hold in the Training Hall and the mirror tracks it.</span>
         <label class="check-row"><input id="mirrorToggle" type="checkbox" checked> Flip</label>
         <span id="runtime" class="note">0.0s</span>
         <span id="flags" class="note"></span>
         <span id="sysCodex" class="note"></span>
       </div>
-      <div id="timelineList" class="timeline-mini">Loadingâ€¦</div>
+      <div id="timelineList" class="timeline-mini">Loading&hellip;</div>
     </footer>
 
     <div id="lightbox" class="lightbox" hidden>
@@ -221,6 +239,7 @@
       <button id="lbPrev" class="lb-nav lb-prev" type="button" aria-label="Previous chart">&lsaquo;</button>
       <figure>
         <img id="lbImage" src="" alt="Reference chart">
+        <video id="lbVideo" controls preload="metadata" hidden></video>
         <figcaption id="lbTitle"></figcaption>
       </figure>
       <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next chart">&rsaquo;</button>

@@ -139,7 +139,20 @@ model; and two capabilities remain honestly gated on physical hardware.
     Training Mode (skipped while the trainer or recorder holds the camera;
     ?autostart=0 disables). **WAKE (2026-07-06):** one button starts Ollama if it
     is down (spawns `ollama serve`, waits up to 15s, reports honestly if absent)
-    and sets the ear listening; Ollama state is part of /api/control/status. **Learning Mode** is the study surface:
+    and sets the ear listening; Ollama state is part of /api/control/status.
+    **Recording made legible (2026-07-06):** the mirror is labeled "nothing is
+    saved" and shows which hold it is tracking; picking ANY of the 19 holds in
+    the Training Hall retargets the live wireframe (the backend always could —
+    the UI had hardcoded three chips). A recording marker file makes "am I
+    being recorded?" answerable: a red pulsing RECORDING banner with the
+    exercise name, live elapsed time, and a STOP button; stopping keeps the
+    video and honestly marks it "not sealed (stopped early)". A Recordings
+    panel lists every video in `Dojo/media` (date, day, duration, size, sealed
+    state, path) with PLAY in the cockpit (new recordings try H.264 so the
+    browser can decode them; old mp4v files may need) OPEN in the system
+    player, and OPEN FOLDER. When a recording ends the mirror comes back by
+    itself. Full cycle verified live: start → banner + elapsed → STOP → file
+    in the archive → mirror auto-restored. **Learning Mode** is the study surface:
     conversation with Master Chirox, Piper/Whisper activity, read-along library,
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck

@@ -29,7 +29,7 @@ def test_static_frontend_served():
     assert "frontCanvas" in text
     assert "sideCanvas" not in text
     assert "extraCanvas" not in text
-    assert "Built-in Webcam" in text
+    assert "Live Mirror" in text
     assert "guideName" in text
     assert "guideImage" in text
     assert "learningDeck" in text
@@ -46,8 +46,53 @@ def test_static_frontend_served():
     for element in ("trainingHall", "hallGroups", "chartShelf",
                     "lightbox", "lbImage", "WAKE"):
         assert element in text, element
+    # recording is never a mystery: banner with STOP, archive with playback,
+    # and the mirror says plainly that it saves nothing
+    for element in ("recBanner", "recStopBtn", "recordingsCard", "recordingsList",
+                    "openFolderBtn", "lbVideo", "trackedStance", "nothing is saved"):
+        assert element in text, element
     # the browser must never show a stale cockpit after an update
     assert response.headers["cache-control"] == "no-cache, must-revalidate"
+
+
+def test_recordings_endpoint_lists_archive():
+    client = TestClient(app)
+    response = client.get("/api/recordings")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert "folder" in data and "items" in data
+    for item in data["items"]:
+        assert {"file", "url", "exercise", "size_mb", "sealed"} <= item.keys()
+        assert item["url"].startswith("/media/")
+
+
+def test_open_recording_refuses_paths_outside_the_archive():
+    from chirox.web.control import open_recording
+
+    res = open_recording("../../Dojo/data/dojo_record.jsonl")
+    assert res["ok"] is False
+
+
+def test_recording_status_false_without_marker(tmp_path, monkeypatch):
+    from chirox.web import control
+
+    monkeypatch.setattr(control, "_recording_marker", lambda: tmp_path / "recording_status.json")
+    assert control.recording_status() == {"recording": False}
+
+
+def test_recording_status_ignores_dead_pid(tmp_path, monkeypatch):
+    import json as _json
+
+    from chirox.web import control
+
+    marker = tmp_path / "recording_status.json"
+    marker.write_text(_json.dumps({"exercise": "horse_stance", "pid": 99999999,
+                                   "seconds": 60, "started": "2026-07-06T00:00:00+00:00"}),
+                      encoding="utf-8")
+    monkeypatch.setattr(control, "_recording_marker", lambda: marker)
+    assert control.recording_status()["recording"] is False
+    assert not marker.exists()  # a stale marker is cleaned up, not trusted
 
 
 def test_guides_endpoint_serves_catalog_and_references():

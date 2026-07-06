@@ -87,3 +87,14 @@ def test_mandarin_lane_indexed_and_cited():
 def test_schedule_topic_surfaces_temple_day():
     hits = CUR.topic("schedule", limit=3)
     assert any(s.source == "temple" for s in hits)
+
+
+def test_training_hall_lane_indexed_and_cited():
+    tr_secs = [s for s in CUR.sections if s.source == "training"]
+    assert tr_secs, "TRAINING_HALL.md not indexed"
+    joined = " ".join(s.title.lower() for s in tr_secs)
+    assert "stone locks" in joined and "staff" in joined
+    assert tr_secs[0].cite().startswith('Training hall §"')
+
+    hits = CUR.topic("equipment", limit=3)
+    assert any(s.source == "training" for s in hits)

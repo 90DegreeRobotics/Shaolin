@@ -185,6 +185,8 @@ Recovery is not softness. Recovery is how the blade keeps its edge.
 
 For the first 90 days, do not collect techniques. Choose one Qi Gong sequence and one stance curriculum.
 
+The complete inventory — every exercise and stretch in the system, the traditional Shaolin implements and when each is earned, household improvisation methods, and the phased purchase list — is maintained in [TRAINING_HALL.md](TRAINING_HALL.md).
+
 Recommended first sequence: **Ba Duan Jin / Eight Brocades**.
 
 Recommended first stance curriculum:

@@ -14,7 +14,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from chirox.config import DIET_DOC, FOODS_DOC, MANDARIN_DOCS, MANUAL_PATH, TEMPLE_DOC
+from chirox.config import (
+    DIET_DOC, FOODS_DOC, MANDARIN_DOCS, MANUAL_PATH, TEMPLE_DOC, TRAINING_DOC,
+)
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 
@@ -42,6 +44,9 @@ TOPIC_QUERIES = {
     "schedule": "temple day rise bell block session morning evening gate",
     "routine": "temple day rise bell block session morning evening gate",
     "temple": "temple day rise bell block session morning evening gate",
+    "equipment": "equipment stone lock sandbag staff wall bag jar pole kettlebell buy improvise",
+    "stretching": "stretch press kick split shoulder hip crescent yatui jibengong",
+    "conditioning": "conditioning plank pushup squat hold reps carry tempering",
 }
 
 
@@ -64,6 +69,7 @@ class Section:
             "diet": "Diet lane",
             "mandarin": "Mandarin lane",
             "temple": "Temple day",
+            "training": "Training hall",
         }.get(self.source, "manual")
         return f'{label} §"{self.title}"'
 
@@ -73,6 +79,7 @@ DEFAULT_LANE_DOCS: dict[str, Path | list[Path]] = {
     "diet": [DIET_DOC, FOODS_DOC],
     "temple": TEMPLE_DOC,
     "mandarin": MANDARIN_DOCS,
+    "training": TRAINING_DOC,
 }
 
 

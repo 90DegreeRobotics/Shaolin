@@ -431,8 +431,56 @@ async function refreshLearning() {
     showMandarinFocus(data.mandarin_focus);
     if (!state.recordDay && data.today) state.recordDay = data.today.day_number;
     if (data.record && Number($("recordDay").value || 0) <= 1) renderRecordDay(data.record);
+    refreshMemory();
   } catch (err) {
     $("readingChunk").textContent = "Learning Mode data unavailable.";
+  }
+}
+
+// --- the Master's memory --------------------------------------------------------------
+
+async function refreshMemory() {
+  try {
+    const data = await (await fetch("/api/memory?last=20")).json();
+    const box = $("memoryList");
+    box.innerHTML = "";
+    if (!data.items || !data.items.length) {
+      box.textContent = "No conversations sealed yet.";
+      return;
+    }
+    for (const item of data.items) {
+      const row = document.createElement("div");
+      row.className = "memory-row" + (item.forgotten ? " forgotten" : "");
+      const body = document.createElement("div");
+      body.className = "memory-body";
+      const meta = document.createElement("div");
+      meta.className = "memory-meta";
+      meta.textContent = `${item.at}${item.forgotten ? " · withdrawn" : ""}`;
+      const q = document.createElement("p");
+      q.textContent = `You: ${item.question}`;
+      const a = document.createElement("p");
+      a.textContent = `Chirox: ${item.answer}`;
+      body.append(meta, q, a);
+      row.append(body);
+      if (!item.forgotten) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.textContent = "FORGET";
+        btn.title = "Withdraw this exchange from recall (recorded, never silent)";
+        btn.addEventListener("click", async () => {
+          const reason = prompt("Why withdraw this exchange? (the reason is sealed)");
+          if (!reason || !reason.trim()) return;
+          const res = await post("/api/memory/forget", { seq: item.seq, reason: reason.trim() });
+          if (!res.ok) alert(res.error || "Could not seal the forgetting.");
+          refreshMemory();
+        });
+        row.append(btn);
+      }
+      box.append(row);
+    }
+  } catch (err) {
+    $("memoryList").textContent = "Memory unavailable.";
   }
 }
 
@@ -476,7 +524,21 @@ $("masterAskBtn").addEventListener("click", async () => {
   lines[lines.length - 1].textContent = res.text || "The Master could not be reached.";
   if (res.ok && res.text) await post("/api/say", { text: res.text });
   refreshControl();
+  refreshMemory();
 });
+
+$("masterReflectBtn").addEventListener("click", async () => {
+  appendChat("You", "Look back over my path with me.");
+  appendChat("Chirox", "Looking back through the record...");
+  const res = await post("/api/master/debrief", { reflect: true });
+  const lines = document.querySelectorAll(".chat-line span");
+  lines[lines.length - 1].textContent = res.text || "The Master could not be reached.";
+  if (res.ok && res.text) await post("/api/say", { text: res.text });
+  refreshControl();
+  refreshMemory();
+});
+
+$("memoryRefreshBtn").addEventListener("click", refreshMemory);
 
 $("loadDayBtn").addEventListener("click", () => loadRecordDay(Number($("recordDay").value || 1)));
 $("saveDailyBtn").addEventListener("click", () => saveLearningRecord("daily"));

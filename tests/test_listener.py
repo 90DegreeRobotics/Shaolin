@@ -68,6 +68,12 @@ def test_route_everything_else_to_master():
     assert route("how deep should my horse stance be") == "master"
 
 
+def test_route_reflection_requests():
+    for cmd in ["reflect on my progress", "let us look back", "how have I grown",
+                "how far have i come this month"]:
+        assert route(cmd) == "reflect", cmd
+
+
 def test_route_read_known_doc():
     assert route("read the manual") == "read"
     assert route("read me the status report") == "read"

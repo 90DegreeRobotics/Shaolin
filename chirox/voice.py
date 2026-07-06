@@ -82,11 +82,13 @@ def speakable(text: str) -> str:
 
 class Voice:
     def __init__(self, piper_voice: str = PIPER_VOICE, whisper_model: str = "base.en",
-                 whisper_device: str = "cpu", whisper_compute: str = "int8"):
+                 whisper_device: str = "cpu", whisper_compute: str = "int8",
+                 pace: float | None = None):
         self._piper_name = piper_voice
         self._whisper_name = whisper_model
         self._whisper_device = whisper_device
         self._whisper_compute = whisper_compute
+        self.pace = pace  # Piper length_scale: >1.0 slows the cadence (a master does not rush)
         self._piper = None
         self._whisper = None
 
@@ -120,8 +122,13 @@ class Voice:
             update_activity(last_spoken=spoken, piper_active=bool(play))
         except Exception:
             pass
+        syn_config = None
+        if self.pace is not None:
+            from piper import SynthesisConfig
+
+            syn_config = SynthesisConfig(length_scale=self.pace)
         with wave.open(str(out), "wb") as wf:
-            self.piper.synthesize_wav(spoken, wf)
+            self.piper.synthesize_wav(spoken, wf, syn_config=syn_config)
         if play:
             self._play(out)
             try:
@@ -146,11 +153,24 @@ class Voice:
 
     # --- hear ----------------------------------------------------------------
 
+    # Whisper's own no-speech decision rule: a segment is a hallucination (the
+    # "Thank you." it invents over near-silence) only when BOTH signals agree —
+    # high no-speech probability AND low decoding confidence.
+    NO_SPEECH_PROB = 0.6
+    LOW_LOGPROB = -1.0
+
+    def _is_hallucinated(self, segment) -> bool:
+        no_speech = getattr(segment, "no_speech_prob", 0.0) or 0.0
+        logprob = getattr(segment, "avg_logprob", 0.0) or 0.0
+        return no_speech > self.NO_SPEECH_PROB and logprob < self.LOW_LOGPROB
+
     def transcribe(self, wav: Path, initial_prompt: str | None = None) -> str:
         """``initial_prompt`` biases Whisper toward expected vocabulary — the ear
-        passes the name "Chirox" so the wake word is not dropped as an unknown."""
+        passes the name "Chirox" so the wake word is not dropped as an unknown.
+        Segments Whisper itself marks as probable non-speech are discarded, so
+        room noise does not become phantom commands."""
         segments, _info = self.whisper.transcribe(str(wav), initial_prompt=initial_prompt)
-        return " ".join(s.text for s in segments).strip()
+        return " ".join(s.text for s in segments if not self._is_hallucinated(s)).strip()
 
     def listen(self, seconds: float = 6.0, samplerate: int = 16000) -> str:
         import sounddevice as sd

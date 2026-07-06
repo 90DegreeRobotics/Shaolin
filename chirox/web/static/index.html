@@ -97,10 +97,24 @@
       <section class="learn-card chat-card">
         <div class="card-head">
           <span class="strip-label">Master Conversation</span>
-          <button id="masterAskBtn" class="go" type="button">ASK</button>
+          <div>
+            <button id="masterReflectBtn" class="chip" type="button" title="The Master looks back over the record and the past conversations">LOOK BACK</button>
+            <button id="masterAskBtn" class="go" type="button">ASK</button>
+          </div>
         </div>
         <div id="chatLog" class="chat-log"></div>
         <textarea id="masterQuestion" rows="4" placeholder="Ask Chirox about today's study, training, record, or Mandarin focus."></textarea>
+      </section>
+
+      <section class="learn-card memory-card">
+        <div class="card-head">
+          <span class="strip-label">The Master's Memory</span>
+          <button id="memoryRefreshBtn" class="chip" type="button">REFRESH</button>
+        </div>
+        <p class="memory-note">Every conversation is sealed and recalled in future exchanges.
+          Forgetting is recorded, never silent — a withdrawn exchange stays in the chain but is
+          no longer remembered.</p>
+        <div id="memoryList" class="memory-list">Loading…</div>
       </section>
 
       <section class="learn-card voice-card">

@@ -32,12 +32,27 @@ model; and two capabilities remain honestly gated on physical hardware.
     sealed manifest = the visual timeline), and a multi-camera fusion aggregator.
     Pose tracking uses the **MediaPipe Tasks API** (`PoseLandmarker`). No model
     touches form assessment.
-  - `master/` — a local-Ollama Master voice (default `qwen2.5:14b-instruct`) that
-    interprets **only from recorded evidence**, with in-voice discernment (the
-    manual's green/red teaching) that informs but never filters. Diet/breath/
-    recovery guidance is grounded in the manual and the Diet lane, quarter-aware.
-    Includes a **wise-sage register** (`sage.py`): grounded philosophical dialogue
-    over the wisdom corpus with a growth ledger (qualitative, not competition).
+  - `master/` — a local-Ollama Master voice that interprets **only from recorded
+    evidence**, with in-voice discernment (the manual's green/red teaching) that
+    informs but never filters. Diet/breath/recovery guidance is grounded in the
+    manual and the Diet lane, quarter-aware. Includes a **wise-sage register**
+    (`sage.py`): grounded philosophical dialogue over the wisdom corpus with a
+    growth ledger (qualitative, not competition). **Persona recast 2026-07-04**
+    in the register of a living Shaolin teacher: calm, measured, unhurried; one
+    exact question turned inward; image → principle → practice; the five
+    hindrances and recognize/accept/investigate/non-identify as working method;
+    an explicit NO-THEATRE clause and a quoting rule — only words that stand
+    verbatim in provided passages may be cited (one real wisdom passage is
+    retrieved per spoken question so citation is grounded, not forbidden).
+    **The Master remembers (2026-07-04):** sealed `conversation` events are
+    recalled into every exchange — the recent turns for continuity plus older
+    exchanges that share vocabulary with the question — and `forget` events are
+    honored (a withdrawn exchange never resurfaces). A spoken **reflect
+    register** ("Chirox, reflect" / "look back") widens the evidence windows
+    (14 days, more conversations, the wisdom growth trail) and asks the Master
+    to name movement, stalls, and one unseen pattern from the record only.
+    Ollama calls pin `num_ctx` 8192 (no silent truncation of the persona) and
+    `keep_alive` 30m (no model reload after each silence).
   - `wisdom.py` — the sage's RAG over the public-domain corpus (cited, never faked).
   - `voice.py` — local, sovereign speech: Piper TTS + faster-whisper STT, offline;
     TTS→STT round-trip verified at 100% on a test phrase.
@@ -49,7 +64,15 @@ model; and two capabilities remain honestly gated on physical hardware.
     (2026-07-03): any spoken question becomes a normal dialogue — the Master's
     persona over real evidence, spoken-length answers, a rolling few turns of
     context, and **every exchange sealed to the Codex** as a `conversation`
-    record. First live round verified against local Ollama. Wake round-trip proven by
+    record. **Streaming mouth (2026-07-04):** the reply is streamed from Ollama
+    and spoken sentence by sentence — first words in ~10–17s warm on this
+    CPU-only laptop instead of ~70s+ for the whole reply (measured live); the
+    mic stays paused for the full reply and whatever was actually said is
+    sealed, even if the stream dies mid-thought. Replies use a measured Piper
+    pace (`speech_pace` 1.1) and Whisper segments that Whisper itself marks as
+    probable non-speech are dropped (no more phantom commands from room noise).
+    Voice/model choices live in config (`piper_voice`, `whisper_model`,
+    `speech_pace`). Wake round-trip proven by
     `--self-test` (Piper speaks the wake phrase, Whisper hears it, routing fires);
     live mic stream + noise-floor calibration verified on the laptop 2026-07-02.
   - `narrator.py` — **long-form reading aloud** (`chirox narrate`, or by voice:
@@ -97,7 +120,10 @@ model; and two capabilities remain honestly gated on physical hardware.
     voice) are never surfaced as separate voices; no runtime dependency on any
     other project.
   - `cli.py` — `chirox init | today | log | vision | record | timeline | review |
-    debrief | sage | growth | say | listen | narrate | train | verify`. The CLI is
+    debrief | sage | growth | say | listen | narrate | train | memory | forget |
+    verify`. `memory` lists what the Master can recall; `forget <seq> --reason`
+    seals a recorded withdrawal so a bad exchange (e.g. a mis-transcription)
+    stops feeding future conversations. The CLI is
     the developer surface; the practitioner's surfaces are the deck and the voice.
   - `web/` - a local-only mode cockpit (FastAPI on `127.0.0.1:8765`, opened as its
     own app window by the desktop **Chirox** shortcut - no address bar, its own
@@ -109,7 +135,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck
     remains a measured experiment, not the default practitioner path.
-- `tests/` - 188 passing unit tests.
+- `tests/` - 209 passing unit tests.
 - `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
   proof artifacts (no personal data).
 

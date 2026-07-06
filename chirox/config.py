@@ -81,19 +81,29 @@ class Config:
     Fields:
         practice_start: ISO date the year began (day 1). Defaults to first run.
         model:          local Ollama model that gives the Master his voice.
-                        Default qwen2.5:14b-instruct — fits a 12GB GPU, strong
-                        instruction-following and passage grounding, and best-in-
-                        class Chinese for the Mandarin lane.
+                        Default qwen2.5:7b-instruct — this laptop runs Ollama on
+                        CPU only (verified 2026-07-04: `ollama ps` shows 100%
+                        CPU), so 7b is the honest ceiling for conversational
+                        latency; strong instruction-following and good Chinese
+                        for the Mandarin lane. Move to 14b only on GPU hardware.
         ollama_url:     base URL of the local Ollama server (sovereign, offline).
         sentinel_mode:  "enforce" (fail closed) or "shadow" (seal but do not block).
         operator_id:    the authorized local operator (the practitioner).
+        piper_voice:    Piper TTS voice for the Master's mouth.
+        whisper_model:  faster-whisper model for the ear ("base.en" is fast;
+                        "small.en" hears better at the cost of latency).
+        speech_pace:    Piper length_scale for the Master's replies; >1.0 is
+                        slower — a measured cadence, not a rushed one.
     """
 
     practice_start: str = field(default_factory=lambda: date.today().isoformat())
-    model: str = "qwen2.5:14b-instruct"
+    model: str = "qwen2.5:7b-instruct"
     ollama_url: str = "http://localhost:11434"
     sentinel_mode: str = "enforce"
     operator_id: str = "local-operator"
+    piper_voice: str = "en_GB-alan-medium"
+    whisper_model: str = "base.en"
+    speech_pace: float = 1.1
 
     # --- persistence ---------------------------------------------------------
 

@@ -224,7 +224,7 @@ def timeline(limit: int = 20) -> list[dict]:
     return rows[-limit:][::-1]
 
 
-def ask_master(question: str | None) -> dict:
+def ask_master(question: str | None, reflect: bool = False) -> dict:
     from chirox.config import Config
     from chirox.master.brain import MasterUnavailable, Ollama, converse, debrief, seal_exchange
 
@@ -233,6 +233,11 @@ def ask_master(question: str | None) -> dict:
     if not ok:
         return {"ok": False, "text": f"The Master is silent — he will not fabricate. {reason}"}
     try:
+        if reflect:
+            q = (question or "").strip() or "Look back over my path with me."
+            text = converse(config, question=q, reflect=True)
+            seal_exchange(q, text, config)
+            return {"ok": True, "text": text}
         if question and question.strip():
             q = question.strip()
             text = converse(config, question=q)
@@ -241,6 +246,49 @@ def ask_master(question: str | None) -> dict:
         return {"ok": True, "text": debrief(config, question=None)}
     except MasterUnavailable as exc:
         return {"ok": False, "text": f"The Master is silent — he will not fabricate. {exc}"}
+
+
+# --- the Master's memory (list + recorded forgetting) ---------------------------------
+
+
+def list_memory(last: int = 20) -> dict:
+    """Sealed conversations the Master can recall — newest first."""
+    from chirox.config import CODEX_PATH
+    from chirox.record.codex import Codex
+
+    codex = Codex(CODEX_PATH)
+    forgotten = {e.payload.get("target_seq") for e in codex.events("forget")}
+    rows = []
+    for e in list(codex.events("conversation"))[-last:]:
+        rows.append({
+            "seq": e.seq,
+            "at": str(e.payload.get("at") or e.ts)[:16].replace("T", " "),
+            "question": " ".join(str(e.payload.get("question", "")).split()),
+            "answer": " ".join(str(e.payload.get("answer", "")).split()),
+            "forgotten": e.seq in forgotten,
+        })
+    return {"ok": True, "items": rows[::-1]}
+
+
+def forget_memory(seq: int, reason: str) -> dict:
+    """Withdraw one sealed exchange from recall — recorded, never silent."""
+    from chirox.config import CODEX_PATH, Config
+    from chirox.record.codex import Codex
+    from chirox.sentinel import Sentinel
+
+    if not (reason or "").strip():
+        return {"ok": False, "error": "a reason is required — erasure is recorded, never silent"}
+    config = Config.load()
+    codex = Codex(CODEX_PATH)
+    target = next((e for e in codex.events("conversation") if e.seq == int(seq)), None)
+    if target is None:
+        return {"ok": False, "error": f"no conversation at seq {seq}"}
+    sentinel = Sentinel(codex, config)
+    sentinel.init_operator()
+    grant = sentinel.authorize("record.forget")
+    event = codex.forget(int(seq), reason.strip(), operator=config.operator_id)
+    sentinel.consume(grant)
+    return {"ok": True, "sealed_at": event.seq}
 
 
 def speak_text(text: str) -> dict:

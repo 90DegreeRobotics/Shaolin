@@ -347,6 +347,42 @@ def cmd_verify(args) -> int:
     return 1
 
 
+def cmd_memory(args) -> int:
+    """What the Master can recall — and what has been withdrawn."""
+    _, codex, _ = _bootstrap()
+    forgotten = {e.payload.get("target_seq") for e in codex.events("forget")}
+    convs = list(codex.events("conversation"))
+    if not convs:
+        print("No conversations sealed yet.")
+        return 0
+    shown = convs[-args.last:] if args.last else convs
+    print(f"Sealed conversations ({len(convs)} total). The Master recalls all but the forgotten:")
+    for e in shown:
+        mark = "  [FORGOTTEN]" if e.seq in forgotten else ""
+        q = " ".join(str(e.payload.get("question", "")).split())
+        a = " ".join(str(e.payload.get("answer", "")).split())
+        print(f"  seq {e.seq:>4}  {e.ts[:16]}{mark}")
+        print(f"    Student: {q[:120]}")
+        print(f"    Chirox:  {a[:120]}")
+    return 0
+
+
+def cmd_forget(args) -> int:
+    config, codex, sentinel = _bootstrap()
+    target = next((e for e in codex.events() if e.seq == args.seq), None)
+    if target is None:
+        print(f"No event at seq {args.seq}.", file=sys.stderr)
+        return 2
+    sentinel.init_operator()
+    grant = sentinel.authorize("record.forget")
+    event = codex.forget(args.seq, args.reason, operator=config.operator_id)
+    sentinel.consume(grant)
+    print(f"Sealed the forgetting of seq {args.seq} at seq {event.seq}.")
+    print("The event stays in the chain (erasure is recorded, never silent); "
+          "the Master will no longer recall it.")
+    return 0
+
+
 # --- parser --------------------------------------------------------------------
 
 
@@ -433,6 +469,15 @@ def build_parser() -> argparse.ArgumentParser:
     sy.add_argument("text", help="the words to speak")
     sy.add_argument("--no-play", action="store_true", help="synthesize to a wav without playing")
     sy.set_defaults(func=cmd_say)
+
+    me = sub.add_parser("memory", help="list sealed conversations the Master can recall")
+    me.add_argument("--last", type=int, default=10, help="show only the last N (0 = all)")
+    me.set_defaults(func=cmd_memory)
+
+    fg = sub.add_parser("forget", help="withdraw one sealed event from recall (recorded, never silent)")
+    fg.add_argument("seq", type=int, help="sequence number to withdraw (see: chirox memory)")
+    fg.add_argument("--reason", required=True, help="why this memory is withdrawn")
+    fg.set_defaults(func=cmd_forget)
 
     sub.add_parser("verify", help="check the Codex chain").set_defaults(func=cmd_verify)
     return p

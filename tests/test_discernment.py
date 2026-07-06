@@ -54,13 +54,19 @@ def test_empty_record_no_signals():
 # --- persona -------------------------------------------------------------------
 
 
-def test_persona_is_a_hardass_but_not_a_bully():
+def test_persona_is_calm_firm_and_honest():
     p = system_prompt().lower()
     assert "chirox" in p
     assert "forge" in p
     assert "never contemptuous" in p or "humiliate" in p  # firm, not cruel
     assert "uncertain" in p                                 # no form flattery
     assert "sovereign" in p                                 # practitioner owns the risk
+    # the studied register: calm, inward-turning, no performance
+    assert "calm, measured, unhurried" in p
+    assert "one exact question" in p
+    assert "no theatre" in p
+    assert "hindrance" in p                                 # real method, not decoration
+    assert "never invent a memory" in p                     # reflection stays honest
 
 
 # --- evidence assembly (pure, no network) --------------------------------------

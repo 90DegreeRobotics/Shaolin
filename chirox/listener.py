@@ -11,7 +11,9 @@ Flow:
     mic → SpeechSegmenter (energy VAD, pure math)
         → Whisper transcript
         → wake match ("Chirox …")
-        → route: local answer (day/standing), Master debrief (Ollama), or sleep
+        → route: local answer (day/standing), conversation or reflection with
+          the Master (Ollama, streamed sentence by sentence, past sealed
+          conversations recalled as memory), reading, or sleep
         → Piper speaks the reply (mic is paused while he talks, so he does not
           hear himself)
 
@@ -46,6 +48,8 @@ WAKE_PREFIXES = {"hey", "ok", "okay"}
 
 _SLEEP_PHRASES = ["go to sleep", "stop listening", "shut down", "shutdown", "good night", "goodnight"]
 _DAY_HINTS = ["what day", "which day", "where do i stand", "where am i", "day number"]
+_REFLECT_HINTS = ["reflect", "look back", "how have i grown", "how far have i come",
+                  "what have i learned", "where have i grown"]
 _TRAIN_HINTS = ["train me", "call the training", "start training", "training call", "lets train", "let us train"]
 _TRAINING_MODE_HINTS = ["training mode", "mirror mode", "body mode"]
 _LEARNING_MODE_HINTS = ["learning mode", "study mode", "reading mode"]
@@ -80,7 +84,7 @@ def match_wake(text: str, aliases: list[str] | None = None) -> tuple[bool, str]:
 
 
 def route(command: str) -> str:
-    """Classify a spoken command: 'sleep' | 'day' | 'read' | 'master'. Pure, testable."""
+    """Classify a spoken command: 'sleep' | 'day' | 'reflect' | 'read' | 'master'. Pure, testable."""
     norm = _normalize(command)
     if any(p in norm for p in _SLEEP_PHRASES):
         return "sleep"
@@ -92,6 +96,8 @@ def route(command: str) -> str:
         return "mode_learning"
     if any(p in norm for p in _TRAIN_HINTS):
         return "train"
+    if any(p in norm for p in _REFLECT_HINTS):
+        return "reflect"
     if "read" in norm.split():
         from chirox.narrator import resolve_readable
 
@@ -244,7 +250,9 @@ class ChiroxEar:
         if self._voice is None:
             from chirox.voice import Voice
 
-            self._voice = Voice()
+            self._voice = Voice(piper_voice=self.config.piper_voice,
+                                whisper_model=self.config.whisper_model,
+                                pace=self.config.speech_pace)
         return self._voice
 
     # --- audio plumbing ---------------------------------------------------------
@@ -386,24 +394,46 @@ class ChiroxEar:
         d = dojo_day(self.config.practice_start_date)
         return d.headline()
 
-    def _answer_master(self, question: str) -> str:
-        """Normal conversation: one persona, spoken register, every exchange sealed."""
-        from chirox.master.brain import MasterUnavailable, Ollama, converse, seal_exchange
+    def _converse_and_speak(self, question: str, reflect: bool = False) -> None:
+        """Conversation with the Master: streamed sentence by sentence, so speech
+        begins with his first sentence, not after his last. The mic stays paused
+        for the whole reply (he must not hear himself), whatever was actually
+        said is sealed — even if the stream dies mid-thought."""
+        from chirox.master.brain import MasterUnavailable, converse_stream, seal_exchange
 
-        ok, reason = Ollama(self.config).available()
-        if not ok:
-            return f"The Master is silent — he will not fabricate. {reason}"
+        spoken: list[str] = []
+        if self._stream is not None:
+            self._stream.stop()
         try:
-            answer = converse(self.config, question=question, history=self._chat)
+            for sentence in converse_stream(self.config, question=question,
+                                            history=self._chat, reflect=reflect):
+                print(f"[ear] chirox: {sentence}")
+                spoken.append(sentence)
+                if self.speak_replies:
+                    try:
+                        self.voice.speak(sentence)
+                    except Exception as exc:  # keep the reply going if the mouth stumbles
+                        print(f"[ear] (voice playback failed: {exc})")
         except MasterUnavailable as exc:
-            return f"The Master is silent — he will not fabricate. {exc}"
+            if not spoken:
+                self._say(f"The Master is silent — he will not fabricate. {exc}")
+                return
+            print(f"[ear] (stream ended early: {exc})")
+        finally:
+            if self._stream is not None:
+                self._drain_queue()
+                self._stream.start()
+            self._reset_segmenter = True
+        if not spoken:
+            self._say("The Master is silent — he gave no words.")
+            return
+        answer = " ".join(spoken)
         self._chat.append((question, answer))
-        self._chat = self._chat[-4:]  # a sitting's worth of context, not a transcript
+        self._chat = self._chat[-8:]  # a sitting's worth of context; the codex holds the rest
         try:
             seal_exchange(question, answer, self.config)
         except Exception as exc:  # logging must never silence the conversation
             print(f"[ear] (could not seal exchange: {exc})")
-        return answer
 
     def handle_command(self, command: str) -> bool:
         """Execute one spoken command. Returns False when the ear should shut down."""
@@ -439,6 +469,9 @@ class ChiroxEar:
                                     stderr=subprocess.DEVNULL)
             print(f"[ear] training session started (pid {proc.pid})")
             return True
+        if kind == "reflect":
+            self._converse_and_speak(command, reflect=True)
+            return True
         if kind == "read":
             from chirox.narrator import resolve_readable, spawn_narration
 
@@ -452,7 +485,7 @@ class ChiroxEar:
             pid = spawn_narration(path)
             print(f"[ear] narration started (pid {pid}): {path}")
             return True
-        self._say(self._answer_master(command))
+        self._converse_and_speak(command)
         return True
 
     def handle_transcript(self, text: str) -> bool:

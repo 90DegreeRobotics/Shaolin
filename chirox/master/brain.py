@@ -8,8 +8,11 @@ fabricate a debrief. Silence is honest; a hallucinated master is not.
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Iterable, Iterator
 
 import requests
 
@@ -57,19 +60,127 @@ class Ollama:
             return False, f"model '{self.model}' not found locally. Run: ollama pull {self.model}"
         return True, "ok"
 
-    def chat(self, system: str, user: str, temperature: float = 0.7) -> str:
-        payload = {
+    # Without an explicit num_ctx Ollama defaults to a small window and silently
+    # truncates from the top — decapitating the persona once evidence + memory
+    # grow. 8192 fits qwen2.5:14b on a 12GB GPU with room to spare.
+    NUM_CTX = 8192
+
+    def _payload(self, system: str, user: str, temperature: float, stream: bool) -> dict:
+        return {
             "model": self.model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "stream": False,
-            "options": {"temperature": temperature},
+            "stream": stream,
+            # An always-on ear should not pay the model-load cost on every
+            # exchange after a silence — keep the Master resident.
+            "keep_alive": "30m",
+            "options": {"temperature": temperature, "num_ctx": self.NUM_CTX},
         }
+
+    def chat(self, system: str, user: str, temperature: float = 0.7) -> str:
         try:
-            r = requests.post(f"{self.url}/api/chat", json=payload, timeout=300)
+            r = requests.post(f"{self.url}/api/chat",
+                              json=self._payload(system, user, temperature, stream=False),
+                              timeout=300)
             r.raise_for_status()
         except requests.RequestException as exc:
             raise MasterUnavailable(f"Ollama call failed: {exc}") from exc
         return r.json()["message"]["content"].strip()
+
+    def chat_stream(self, system: str, user: str, temperature: float = 0.7) -> Iterator[str]:
+        """Yield the reply as it is generated — the mouth need not wait for the whole thought."""
+        try:
+            with requests.post(f"{self.url}/api/chat",
+                               json=self._payload(system, user, temperature, stream=True),
+                               stream=True, timeout=300) as r:
+                r.raise_for_status()
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    data = json.loads(line)
+                    piece = data.get("message", {}).get("content", "")
+                    if piece:
+                        yield piece
+                    if data.get("done"):
+                        return
+        except requests.RequestException as exc:
+            raise MasterUnavailable(f"Ollama call failed: {exc}") from exc
+
+
+_SENTENCE_END = re.compile(r"([.!?…]+[\"')\]]?)\s")
+
+
+def sentences(chunks: Iterable[str]) -> Iterator[str]:
+    """Regroup a stream of text fragments into whole sentences as they complete.
+
+    Pure and deterministic: each sentence is yielded the moment its terminator
+    (followed by whitespace) arrives, so speech can begin before the model has
+    finished thinking. Decimals like 3.5 never split; the unterminated tail is
+    yielded last.
+    """
+    buf = ""
+    for chunk in chunks:
+        buf += chunk
+        while True:
+            m = _SENTENCE_END.search(buf)
+            if not m:
+                break
+            end = m.end(1)
+            sent = buf[:end].strip()
+            buf = buf[end:]
+            if sent:
+                yield sent
+    tail = buf.strip()
+    if tail:
+        yield tail
+
+
+# --- the Master's memory (pure) --------------------------------------------------
+
+# Words too common to signal that two conversations are about the same thing.
+_RECALL_STOPWORDS = frozenset(
+    "the a an and or but if then is are was were be been being am i you he she it we they "
+    "my your his her its our their of in on at to for with about from as this that these "
+    "those what which who whom how when where why do does did doing done have has had having "
+    "can could should would will shall may might must not no yes so very just really there "
+    "here me him them us more most some any all each one two also into over under again "
+    "today tomorrow yesterday day days chirox master".split()
+)
+
+
+def _keywords(text: str) -> set[str]:
+    words = "".join(c if c.isalnum() or c.isspace() else " " for c in text.lower()).split()
+    return {w for w in words if len(w) > 2 and w not in _RECALL_STOPWORDS}
+
+
+def recall_exchanges(codex, question: str | None, recent: int = 2, relevant: int = 3) -> list[dict]:
+    """The Master's memory: sealed conversations recalled into today's context.
+
+    Always the last ``recent`` exchanges (continuity across sittings), plus up
+    to ``relevant`` older ones that share real vocabulary with today's
+    question. Returned oldest-first, each payload carrying its seal timestamp.
+    Exchanges withdrawn by a ``forget`` event stay in the chain but are never
+    recalled — an honored erasure, not a silent one.
+    """
+    forgotten = {e.payload.get("target_seq") for e in codex.events("forget")}
+    events = [e for e in codex.events("conversation") if e.seq not in forgotten]
+    if not events:
+        return []
+    chosen = {e.seq: e for e in (events[-recent:] if recent else [])}
+    if question:
+        qk = _keywords(question)
+        older = events[:-recent] if recent else events
+        if qk and older:
+            need = min(2, len(qk))  # one stray shared word is not a memory
+            scored = []
+            for e in older:
+                p = e.payload
+                hit = len(qk & _keywords(f"{p.get('question', '')} {p.get('answer', '')}"))
+                if hit >= need:
+                    scored.append((hit, e.seq, e))
+            scored.sort(key=lambda t: (-t[0], -t[1]))
+            for _, _, e in scored[:relevant]:
+                chosen.setdefault(e.seq, e)
+    return [dict(e.payload, sealed_at=e.ts) for e in sorted(chosen.values(), key=lambda e: e.seq)]
 
 
 # --- evidence assembly (pure) --------------------------------------------------
@@ -83,6 +194,9 @@ class MasterContext:
     discernment: Discernment
     passages: list[Section] = field(default_factory=list)
     question: str | None = None
+    memory: list[dict] = field(default_factory=list)
+    wisdom_growth: dict | None = None
+    wisdom_passages: list = field(default_factory=list)
 
 
 def gather_evidence(
@@ -91,12 +205,31 @@ def gather_evidence(
     curriculum: Curriculum,
     today: date | None = None,
     question: str | None = None,
+    deep: bool = False,
 ) -> MasterContext:
+    """Assemble the Master's context. ``deep`` widens every window — used when
+    the student asks to look back, because reflection needs a longer memory."""
     standing = dojo_day(config.practice_start_date, today)
-    recent_days = [e.payload for e in codex.tail(5, "daily_checkin")]
+    recent_days = [e.payload for e in codex.tail(14 if deep else 5, "daily_checkin")]
     vision_events = codex.tail(1, "vision_session")
     latest_vision = vision_events[0].payload if vision_events else None
     disc = read_signals(recent_days)
+    memory = recall_exchanges(codex, question,
+                              recent=6 if deep else 2, relevant=4 if deep else 3)
+    from chirox.master.sage import growth_summary  # lazy: sage imports this module
+
+    wisdom_growth = growth_summary(codex)
+
+    # One real, checkable passage per question: a model that wants to cite a
+    # book will cite one — give it true words or it will invent its own.
+    wisdom_passages: list = []
+    if question:
+        try:
+            from chirox.wisdom import WisdomLibrary
+
+            wisdom_passages = WisdomLibrary().search(question, limit=1)
+        except Exception:
+            wisdom_passages = []
 
     passages: list[Section] = []
     seen: set[str] = set()
@@ -127,7 +260,13 @@ def gather_evidence(
     if latest_vision and latest_vision.get("flags_observed"):
         add(curriculum.by_title("Learning the Forms"))
 
-    return MasterContext(standing, recent_days, latest_vision, disc, passages, question)
+    return MasterContext(standing, recent_days, latest_vision, disc, passages, question,
+                         memory, wisdom_growth, wisdom_passages)
+
+
+def _clip(text: str, limit: int = 320) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + " …"
 
 
 def _fmt_day(rec: dict) -> str:
@@ -170,6 +309,22 @@ def render_evidence(ctx: MasterContext, task: str | None = None) -> str:
         lines.append("\nDISCERNMENT (your judgment context — facts from the manual, not a script)")
         lines += ["  " + ln for ln in disc_txt.splitlines()]
 
+    lines.append("\nMEMORY — SEALED PAST CONVERSATIONS (your own memory of this student; "
+                 "quote them honestly, never invent one)")
+    if ctx.memory:
+        for m in ctx.memory:
+            when = str(m.get("at") or m.get("sealed_at") or "")[:10]
+            lines.append(f"  [{when}] Student: {_clip(m.get('question', ''))}")
+            lines.append(f"  [{when}] Chirox: {_clip(m.get('answer', ''))}")
+    else:
+        lines.append("  (none yet — these are among your first words together)")
+
+    if ctx.wisdom_growth and ctx.wisdom_growth.get("count"):
+        g = ctx.wisdom_growth
+        themes = ", ".join(t for t, _ in g.get("themes", [])[:4])
+        lines.append(f"\nWISDOM TRAIL: {g['count']} sage dialogues sealed; growth markers {g.get('growth')}"
+                     + (f"; recurring themes: {themes}" if themes else ""))
+
     lines.append("\nCURRICULUM (ground your guidance in these; cite the section names)")
     if ctx.passages:
         for sec in ctx.passages:
@@ -177,6 +332,15 @@ def render_evidence(ctx: MasterContext, task: str | None = None) -> str:
             lines += ["    " + ln for ln in sec.excerpt(500).splitlines() if ln.strip()]
     else:
         lines.append("  (none retrieved)")
+
+    if ctx.wisdom_passages:
+        lines.append("\nWISDOM PASSAGE (real text from the shelf — besides the curriculum above, "
+                     "the ONLY words you may quote; cite the book by name)")
+        for p in ctx.wisdom_passages:
+            lines.append(f'  From {p.book}: "{_clip(p.text, 600)}"')
+    elif not ctx.passages:
+        lines.append("\n(No passage retrieved: quote no text and cite no book in this reply — "
+                     "speak from principle and name it as principle.)")
 
     if ctx.question:
         lines.append(f"\nTHE STUDENT ASKS: {ctx.question}")
@@ -189,10 +353,27 @@ _DEBRIEF_TASK = "TASK: Speak as Chirox. Give the debrief. End with tomorrow's no
 _CONVERSE_TASK = (
     "TASK: This is a spoken conversation, not a debrief. Answer the student's question "
     "directly, in Chirox's own voice — two to five sentences of natural speech (your words "
-    "will be read aloud; no headings, no lists, no symbols). Stay grounded: the record and "
-    "the manual are your facts. When they hold no answer, say so plainly, then answer from "
-    "principle and name it as principle. Never fabricate measurements or history."
+    "will be read aloud; no headings, no lists, no symbols). Stay grounded: the record, the "
+    "sealed conversations, and the manual are your facts. When they hold no answer, say so "
+    "plainly, then answer from principle and name it as principle. Never fabricate "
+    "measurements or history. If you quote or cite any text, the quoted words must appear "
+    "verbatim in the passages above — when no passage is given, cite nothing and quote no one."
 )
+
+_REFLECT_TASK = (
+    "TASK: The student asks you to look back with him. This is reflection, not a debrief. "
+    "From the sealed conversations, the recorded days, and the wisdom trail above, name in "
+    "Chirox's own voice: what has genuinely moved since the earliest evidence here, what has "
+    "stalled or keeps repeating, and one pattern the student may not see in himself. Growth "
+    "counts only if the record shows it — thin evidence is named as thin, never inflated. "
+    "Speak for the ear: no headings, no lists, no symbols, at most ten sentences. If you "
+    "quote, the words must appear verbatim in the evidence above. End with ONE question for "
+    "the student to sit with."
+)
+
+# Conversation runs cooler than the default: on small local models a higher
+# temperature is where invented quotations and decorative mysticism come from.
+_CONVERSE_TEMPERATURE = 0.4
 
 
 # --- orchestration -------------------------------------------------------------
@@ -225,27 +406,42 @@ def conversation_prompt(evidence: str, history: list[tuple[str, str]]) -> str:
     return "\n".join(lines) + "\n\n" + evidence
 
 
-def converse(config: Config | None = None, question: str = "",
-             history: list[tuple[str, str]] | None = None, today: date | None = None) -> str:
-    """A normal conversation with Chirox — one being, one voice, spoken register.
-
-    Same honesty rules as the debrief: the model sees only real evidence, and is
-    told to mark principle as principle when the record holds no answer.
-    """
+def _prepare_conversation(config: Config, question: str,
+                          history: list[tuple[str, str]] | None,
+                          today: date | None, reflect: bool) -> tuple[Ollama, str]:
     from chirox.config import CODEX_PATH
     from chirox.record.codex import Codex
 
-    config = config or Config.load()
     ollama = Ollama(config)
     ok, reason = ollama.available()
     if not ok:
         raise MasterUnavailable(reason)
+    ctx = gather_evidence(config, Codex(CODEX_PATH), Curriculum(), today, question, deep=reflect)
+    evidence = render_evidence(ctx, task=_REFLECT_TASK if reflect else _CONVERSE_TASK)
+    return ollama, conversation_prompt(evidence, history or [])
 
-    codex = Codex(CODEX_PATH)
-    curriculum = Curriculum()
-    ctx = gather_evidence(config, codex, curriculum, today, question)
-    evidence = render_evidence(ctx, task=_CONVERSE_TASK)
-    return ollama.chat(system_prompt(), conversation_prompt(evidence, history or []))
+
+def converse(config: Config | None = None, question: str = "",
+             history: list[tuple[str, str]] | None = None, today: date | None = None,
+             reflect: bool = False) -> str:
+    """A normal conversation with Chirox — one being, one voice, spoken register.
+
+    Same honesty rules as the debrief: the model sees only real evidence, and is
+    told to mark principle as principle when the record holds no answer. With
+    ``reflect`` the evidence windows widen and the task becomes looking back.
+    """
+    ollama, prompt = _prepare_conversation(config or Config.load(), question, history, today, reflect)
+    return ollama.chat(system_prompt(), prompt, temperature=_CONVERSE_TEMPERATURE)
+
+
+def converse_stream(config: Config | None = None, question: str = "",
+                    history: list[tuple[str, str]] | None = None, today: date | None = None,
+                    reflect: bool = False) -> Iterator[str]:
+    """Like :func:`converse`, but yields whole sentences as the model produces
+    them — the mouth begins with the first sentence, not after the last."""
+    ollama, prompt = _prepare_conversation(config or Config.load(), question, history, today, reflect)
+    yield from sentences(ollama.chat_stream(system_prompt(), prompt,
+                                            temperature=_CONVERSE_TEMPERATURE))
 
 
 def seal_exchange(question: str, answer: str, config: Config | None = None):

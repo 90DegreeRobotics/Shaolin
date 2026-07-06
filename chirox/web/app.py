@@ -148,6 +148,12 @@ class RecordRequest(BaseModel):
 
 class MasterRequest(BaseModel):
     question: str | None = None
+    reflect: bool = False
+
+
+class ForgetRequest(BaseModel):
+    seq: int
+    reason: str
 
 
 class SpeakRequest(BaseModel):
@@ -301,7 +307,21 @@ def get_timeline(limit: int = 20):
 def master_debrief(req: MasterRequest):
     from chirox.web import control
 
-    return control.ask_master(req.question)
+    return control.ask_master(req.question, reflect=req.reflect)
+
+
+@app.get("/api/memory")
+def memory_list(last: int = 20):
+    from chirox.web import control
+
+    return control.list_memory(last)
+
+
+@app.post("/api/memory/forget")
+def memory_forget(req: ForgetRequest):
+    from chirox.web import control
+
+    return control.forget_memory(req.seq, req.reason)
 
 
 @app.post("/api/say")

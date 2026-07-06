@@ -28,3 +28,6 @@ Dojo/witness/*.local.*
 # Forms: generated print artifacts and dated instances
 Forms/print/*.pdf
 Forms/print/weekly_review_week*.html
+
+# Generated print PDFs/HTML (rebuild with tools/md2pdf.py)
+Print/

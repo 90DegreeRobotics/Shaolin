@@ -3,6 +3,7 @@
     chirox init                       establish the operator + config (sealed)
     chirox today                      where you stand, and today's gate
     chirox log <type> [--file F]      fill or ingest a Dojo Record entry
+    chirox library                    list readable docs/books Chirox can narrate
     chirox vision --source 0 [--seal] run the deterministic reflex
     chirox review                     today's due review template
     chirox debrief [--question "…"]   the Master speaks, from evidence
@@ -191,6 +192,30 @@ def cmd_review(args) -> int:
     else:
         print(f"Weekly review (week {d.week_number}):\n")
         print(blank_template("weekly_review"))
+    return 0
+
+
+def cmd_library(args) -> int:
+    """List the local spoken library without starting narration."""
+    from chirox.narrator import readable_catalog, reading_progress
+
+    progress = reading_progress()
+    items = []
+    for label, _keys, path in readable_catalog():
+        items.append({
+            "label": label,
+            "kind": "book" if path.suffix == ".txt" else "doc",
+            "file": path.name,
+            "bookmark": progress.get(path.name, 0),
+            "present": path.exists(),
+        })
+    if args.json:
+        print(json.dumps({"items": items}, indent=2))
+        return 0
+    print("Readable library:")
+    for item in items:
+        mark = f" @ passage {item['bookmark']}" if item["bookmark"] else ""
+        print(f"  - {item['label']} [{item['kind']}] ({item['file']}){mark}")
     return 0
 
 
@@ -438,6 +463,10 @@ def build_parser() -> argparse.ArgumentParser:
     sg.set_defaults(func=cmd_sage)
 
     sub.add_parser("growth", help="your wisdom growth ledger").set_defaults(func=cmd_growth)
+
+    lb = sub.add_parser("library", help="list readable docs/books Chirox can narrate")
+    lb.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    lb.set_defaults(func=cmd_library)
 
     tr = sub.add_parser("train", help="Chirox calls the drills aloud and measures your form")
     tr.add_argument("--source", default="0", help="camera index")

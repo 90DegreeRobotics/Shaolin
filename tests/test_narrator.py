@@ -94,6 +94,19 @@ def test_resolve_doc_guide():
     assert got[1].name == "Shaolin_For_Dummies.md"
 
 
+def test_resolve_doc_kung_fu_study_guide():
+    got = resolve_doc("read me the kung fu study guide please")
+    assert got is not None
+    assert got[0] == "the Kung Fu study guide"
+    assert got[1].name == "SHAOLIN_KUNG_FU_STUDY_GUIDE.md"
+
+
+def test_resolve_doc_study_guide_disambiguates_from_beginner_guide():
+    got = resolve_doc("read me the study guide please")
+    assert got is not None
+    assert got[0] == "the Kung Fu study guide"
+
+
 def test_resolve_doc_none_for_unknown():
     assert resolve_doc("read me a poem") is None
     assert resolve_doc("what should i read next") is None

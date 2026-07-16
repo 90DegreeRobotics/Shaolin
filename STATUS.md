@@ -1,5 +1,5 @@
 # Status
-## Current Truth as of 2026-07-04
+## Current Truth as of 2026-07-16
 
 This repository is a public discipline manual **and** a working first version of
 the Chirox software system.
@@ -15,6 +15,11 @@ model; and two capabilities remain honestly gated on physical hardware.
 - `Mandarin/` contains the Mandarin, pinyin, calligraphy, and journaling lane.
 - `Diet/` is the food-as-training lane (plant-forward pragmatic, four-quarter
   arc: stabilize → cleanse → sharpen → sustain) that the Master grounds in and cites.
+- `Docs/` contains supplementary study material. `Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md`
+  is the integrated Kung Fu study-guide lane: 18 external basics, Wu Bu Quan,
+  Luohan/Qi Gong balance, staff work, digital-resource discipline, Chirox
+  measurement mapping, and current outdoor-practice rule links for Normal and
+  Bloomington.
 - `Wisdom/` is a public-domain philosophy corpus (Tao Te Ching, Analects,
   Dhammapada, Art of War) that Chirox the sage grounds in and cites — never fabricated.
 - `chirox/` is the Python package that implements Chirox:
@@ -35,7 +40,8 @@ model; and two capabilities remain honestly gated on physical hardware.
   - `master/` — a local-Ollama Master voice that interprets **only from recorded
     evidence**, with in-voice discernment (the manual's green/red teaching) that
     informs but never filters. Diet/breath/recovery guidance is grounded in the
-    manual and the Diet lane, quarter-aware. Includes a **wise-sage register**
+    manual, the Diet lane, the Training Hall, the Temple Day, Mandarin lane,
+    and the Kung Fu study guide, quarter-aware. Includes a **wise-sage register**
     (`sage.py`): grounded philosophical dialogue over the wisdom corpus with a
     growth ledger (qualitative, not competition). **Persona recast 2026-07-04**
     in the register of a living Shaolin teacher: calm, measured, unhurried; one
@@ -81,7 +87,8 @@ model; and two capabilities remain honestly gated on physical hardware.
     a short listening window between passages to stop, and per-book bookmarks
     (`Dojo/data/reading_progress.json`). The spoken library = repo docs plus the
     eight wisdom-corpus books, resolved fuzzily (Whisper's "dhamma pada" finds
-    The Dhammapada). Markdown is cleaned to speakable prose, chunked
+    The Dhammapada). The local spoken-doc shelf also includes the integrated Kung
+    Fu study guide. Markdown is cleaned to speakable prose, chunked
     at sentence/paragraph boundaries, and synthesized one chunk ahead of playback
     so any size text starts speaking in seconds — through one continuous audio
     stream (no per-chunk stop/start choppiness). **One being, one voice:** the
@@ -119,9 +126,10 @@ model; and two capabilities remain honestly gated on physical hardware.
   - **One identity: Master Chirox.** Internal engines (reflex, memory, brain, sage,
     voice) are never surfaced as separate voices; no runtime dependency on any
     other project.
-  - `cli.py` — `chirox init | today | log | vision | record | timeline | review |
+  - `cli.py` — `chirox init | today | log | library | vision | record | timeline | review |
     debrief | sage | growth | say | listen | narrate | train | memory | forget |
-    verify`. `memory` lists what the Master can recall; `forget <seq> --reason`
+    verify`. `library` lists the readable local docs/books without starting
+    audio; `memory` lists what the Master can recall; `forget <seq> --reason`
     seals a recorded withdrawal so a bad exchange (e.g. a mis-transcription)
     stops feeding future conversations. The CLI is
     the developer surface; the practitioner's surfaces are the deck and the voice.
@@ -157,7 +165,10 @@ model; and two capabilities remain honestly gated on physical hardware.
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck
     remains a measured experiment, not the default practitioner path.
-- `tests/` - 209 passing unit tests.
+- `tests/` - 226 passing unit tests as of `python -m pytest` on 2026-07-16.
+- `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
+  `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
+  public contribution, privacy, proof, curriculum, and hardware witness rules.
 - `Dojo/witness/PROOF_2026-06-30.md` and `sample_vision_session.json` — inspected
   proof artifacts (no personal data).
 

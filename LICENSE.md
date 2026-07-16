@@ -1,6 +1,6 @@
 # License
 
-This repository currently contains writings, manuals, curricula, and planning documents. It does not yet contain verified software implementation.
+This repository contains writings, manuals, curricula, planning documents, and a young verified software implementation under `chirox/`.
 
 ## Documentation and Curriculum
 
@@ -18,15 +18,20 @@ License summary:
 
 The moral request of this repository is also plain: do not turn this material into secret-gated self-improvement theater. If you carry it forward, keep it open, attributed, and useful.
 
-## Future Software
+## Software Code
 
-Future software code added to this repository is intended to be licensed under the MIT License unless a file or folder states otherwise.
+Unless a file says otherwise, software code in this repository is licensed under:
 
-MIT License reference:
+**GNU Affero General Public License v3.0 (AGPLv3)**
 
-- Link: <https://opensource.org/license/mit>
+Full text:
 
-When software is added, this license file should be updated with exact software-license text or a separate `LICENSE-CODE` file.
+- Local file: [`LICENSE-CODE`](LICENSE-CODE)
+- GNU reference: <https://www.gnu.org/licenses/agpl-3.0.en.html>
+
+The intent is simple: the software may be used, studied, modified, shared, and
+run, including over a network, but improvements and modified network-served
+versions must remain available under the same free-software terms.
 
 ## No Affiliation
 

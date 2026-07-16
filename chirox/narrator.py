@@ -109,7 +109,7 @@ def chunk_text(text: str, target: int = CHUNK_TARGET) -> list[str]:
 
 def readable_docs() -> dict[str, tuple[str, Path]]:
     """Spoken keyword → (label, path) for docs the ear may be asked to read."""
-    from chirox.config import DIET_DOC, MANUAL_PATH, REPO_ROOT
+    from chirox.config import DIET_DOC, KUNG_FU_GUIDE_DOC, MANUAL_PATH, REPO_ROOT
 
     dummies = REPO_ROOT / "Shaolin_For_Dummies.md"
     return {
@@ -117,6 +117,10 @@ def readable_docs() -> dict[str, tuple[str, Path]]:
         "book": ("the manual", MANUAL_PATH),
         "guide": ("the beginner guide", dummies),
         "dummies": ("the beginner guide", dummies),
+        "kung": ("the Kung Fu study guide", KUNG_FU_GUIDE_DOC),
+        "kungfu": ("the Kung Fu study guide", KUNG_FU_GUIDE_DOC),
+        "jibengong": ("the Kung Fu study guide", KUNG_FU_GUIDE_DOC),
+        "staff": ("the Kung Fu study guide", KUNG_FU_GUIDE_DOC),
         "status": ("the status report", REPO_ROOT / "STATUS.md"),
         "diet": ("the diet lane", DIET_DOC),
         "readme": ("the readme", REPO_ROOT / "README.md"),
@@ -124,11 +128,16 @@ def readable_docs() -> dict[str, tuple[str, Path]]:
 
 
 def resolve_doc(command: str) -> tuple[str, Path] | None:
-    words = set(re.sub(r"[^a-z0-9\s]", " ", command.lower()).split())
+    catalog = []
+    seen_docs: dict[Path, tuple[str, set[str]]] = {}
     for key, (label, path) in readable_docs().items():
-        if key in words and path.exists():
-            return label, path
-    return None
+        if path.exists():
+            if path in seen_docs:
+                seen_docs[path][1].add(key)
+            else:
+                seen_docs[path] = (label, {key, *title_keys(label)})
+    catalog.extend((label, keys, path) for path, (label, keys) in seen_docs.items())
+    return match_readable(command, catalog)
 
 
 # --- the reading library (books + docs, resolvable by spoken name) --------------------
@@ -158,7 +167,7 @@ def readable_catalog() -> list[tuple[str, set[str], Path]]:
             if path in seen_docs:
                 seen_docs[path][1].add(key)  # one entry per file, all its spoken names
             else:
-                seen_docs[path] = (label, {key})
+                seen_docs[path] = (label, {key, *title_keys(label)})
     catalog.extend((label, keys, path) for path, (label, keys) in seen_docs.items())
     for fn, (title, _url) in CORPUS.items():
         p = WISDOM_DIR / fn

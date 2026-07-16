@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chirox.config import (
-    DIET_DOC, FOODS_DOC, MANDARIN_DOCS, MANUAL_PATH, TEMPLE_DOC, TRAINING_DOC,
+    DIET_DOC, FOODS_DOC, KUNG_FU_GUIDE_DOC, MANDARIN_DOCS, MANUAL_PATH,
+    TEMPLE_DOC, TRAINING_DOC,
 )
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
@@ -47,6 +48,11 @@ TOPIC_QUERIES = {
     "equipment": "equipment stone lock sandbag staff wall bag jar pole kettlebell buy improvise",
     "stretching": "stretch press kick split shoulder hip crescent yatui jibengong",
     "conditioning": "conditioning plank pushup squat hold reps carry tempering",
+    "kung fu": "kung fu jibengong external basics wu bu quan staff kicks sweeps",
+    "jibengong": "jibengong external basics horse bow drop cat kick sweep wu bu quan",
+    "staff": "staff gun waxwood grip figure eight flower chop sweep thrust outdoor",
+    "outdoor": "outdoor park normal bloomington maxwell trail public staff rules",
+    "parks": "outdoor park normal bloomington maxwell trail public staff rules",
 }
 
 
@@ -70,6 +76,7 @@ class Section:
             "mandarin": "Mandarin lane",
             "temple": "Temple day",
             "training": "Training hall",
+            "kungfu": "Kung Fu guide",
         }.get(self.source, "manual")
         return f'{label} §"{self.title}"'
 
@@ -80,6 +87,7 @@ DEFAULT_LANE_DOCS: dict[str, Path | list[Path]] = {
     "temple": TEMPLE_DOC,
     "mandarin": MANDARIN_DOCS,
     "training": TRAINING_DOC,
+    "kungfu": KUNG_FU_GUIDE_DOC,
 }
 
 

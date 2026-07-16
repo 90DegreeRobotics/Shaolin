@@ -187,6 +187,10 @@ For the first 90 days, do not collect techniques. Choose one Qi Gong sequence an
 
 The complete inventory — every exercise and stretch in the system, the traditional Shaolin implements and when each is earned, household improvisation methods, and the phased purchase list — is maintained in [TRAINING_HALL.md](TRAINING_HALL.md).
 
+The technique-reference layer for the 18 external basics, Wu Bu Quan, staff
+study, and Chirox measurement boundaries lives in
+[Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md](Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md).
+
 Recommended first sequence: **Ba Duan Jin / Eight Brocades**.
 
 Recommended first stance curriculum:

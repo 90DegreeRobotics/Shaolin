@@ -9,6 +9,16 @@ This is not monetization content. It is not a funnel. It is not a claim of maste
 
 It is an offering.
 
+## Free Forever
+
+This project is my contribution to humanity.
+
+It is free for anyone who wishes to walk a path toward steadiness, discipline, health, recovery, and self-mastery. It is not a funnel, not a product, not a secret course, and not a claim of authority. It is a public gate.
+
+Use it carefully. Adapt it honestly. Share it openly. Do not turn it into hidden self-improvement theater.
+
+If it helps one person return to their body, quiet their mind, recover their dignity, and show up again tomorrow, then it has done its work.
+
 The hope is simple: real knowledge should help a human being stand more fully in their own life. Knowledge illuminates the path. Practice walks it. This project exists for the person who is tired of drifting, tired of being ruled by impulse, tired of knowing what would help and not doing it. It is for the person who needs a clean structure, a daily return, and a way to build themselves without fantasy.
 
 ## Non-Affiliation
@@ -37,6 +47,8 @@ It is a one-year training manual built around:
 - Confucian conduct, respect, and service
 - daily and weekly measurement through a Dojo Record
 - Mandarin study and calligraphy-linked journaling
+- a supplementary Kung Fu study guide for external basics, staff work, digital
+  resource discipline, and outdoor practice logistics
 
 The aim is not to pretend to be a monk. The aim is to become harder to knock off center.
 
@@ -53,7 +65,8 @@ Current truth:
   conversation register (every exchange sealed), a wise-sage register with a growth
   ledger, a session recorder / visual timeline, an always-on wake-word ear with
   stricter intentional wake handling, long-form narration, a spoken training caller,
-  and a mode-based local browser app. 188 passing tests.
+  and a mode-based local browser app. See `STATUS.md` for the latest verified
+  test count.
 - The browser app now has two practitioner modes. **Training Mode** is a single
   built-in-webcam mirror with the wireframe overlay, reference exercise guide, and
   deterministic truth states. **Learning Mode** is a study desk: conversation,
@@ -142,8 +155,18 @@ That is the gate.
 - [SAFETY.md](SAFETY.md) - medical, injury, beginner, and no-AI-form-diagnosis boundaries
 - [ACCESS_AND_INSPIRATION.md](ACCESS_AND_INSPIRATION.md) - personal inspiration, access reason, and non-affiliation boundary
 - [ROADMAP.md](ROADMAP.md) - phased path from manual to possible deterministic tool
-- [LICENSE.md](LICENSE.md) - documentation license and future software-license intent
+- [TRUTH_AUDIT.md](TRUTH_AUDIT.md) - proven, measured, record-only, deferred, and gated truth ledger
+- [CURRICULUM_MAP.md](CURRICULUM_MAP.md) - practical lane map from Day 1 through the four quarters
+- [HARDWARE_WITNESS_PROTOCOL.md](HARDWARE_WITNESS_PROTOCOL.md) - exact runs needed to close live hardware gates
+- [RUN_PROOF.md](RUN_PROOF.md) - clean-clone proof commands and hardware-gated checks
+- [CONTRIBUTING.md](CONTRIBUTING.md) - contribution rules for safety, truth, licensing, and Chirox changes
+- [SECURITY.md](SECURITY.md) - local-first security posture and reporting guidance
+- [PRIVACY.md](PRIVACY.md) - private Dojo data and public witness boundaries
+- [LICENSE.md](LICENSE.md) - documentation/curriculum license and code-license overview
+- [LICENSE-CODE](LICENSE-CODE) - AGPLv3 license text for software code
 - [Chirox_Integration_Plan.md](Chirox_Integration_Plan.md) - deterministic measurement architecture concept
+- [Docs/README.md](Docs/README.md) - supplementary study shelf
+- [Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md](Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md) - integrated Kung Fu study guide and Chirox mapping
 - [Mandarin/README.md](Mandarin/README.md) - Mandarin syllabus, curriculum, calligraphy journal method, and open-source resource map
 - [Diet/README.md](Diet/README.md) - the food-as-training lane: plant-forward pragmatic diet, portioning, timing, and a four-quarter progression
 - [Archive/README.md](Archive/README.md) - preserved older scaffold drafts
@@ -152,7 +175,7 @@ The main manual is the current center. Older scaffold documents have been moved 
 
 ## License
 
-Documentation and curriculum are licensed under [CC BY-SA 4.0](LICENSE.md). Future software is intended to use the MIT License unless a file says otherwise.
+Documentation and curriculum are licensed under [CC BY-SA 4.0](LICENSE.md). Software code is licensed under [AGPLv3](LICENSE-CODE).
 
 ## Why Public
 

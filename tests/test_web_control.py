@@ -33,6 +33,7 @@ def test_library_lists_books_and_docs():
     data = client.get("/api/library").json()
     labels = {i["label"] for i in data["items"]}
     assert "the manual" in labels
+    assert "the Kung Fu study guide" in labels
     assert "Tao Te Ching" in labels
     kinds = {i["kind"] for i in data["items"]}
     assert kinds <= {"book", "doc"}

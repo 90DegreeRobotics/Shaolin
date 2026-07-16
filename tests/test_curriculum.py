@@ -98,3 +98,18 @@ def test_training_hall_lane_indexed_and_cited():
 
     hits = CUR.topic("equipment", limit=3)
     assert any(s.source == "training" for s in hits)
+
+
+def test_kung_fu_study_guide_indexed_and_cited():
+    guide_secs = [s for s in CUR.sections if s.source == "kungfu"]
+    assert guide_secs, "Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md not indexed"
+    joined = " ".join((s.title + " " + s.body).lower() for s in guide_secs)
+    assert "18 external basics" in joined
+    assert "wu bu quan" in joined
+    assert "outdoor training" in joined
+    assert guide_secs[0].cite().startswith('Kung Fu guide §"')
+
+
+def test_staff_topic_surfaces_kung_fu_guide():
+    hits = CUR.topic("staff", limit=5)
+    assert any(s.source == "kungfu" for s in hits)

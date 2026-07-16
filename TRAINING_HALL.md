@@ -115,6 +115,31 @@ before strength. Order: presses first, then kicks, splits progression last.
 | Snap kick | 弹腿 tántuǐ | knee lifts, lower leg snaps out relaxed — speed without force |
 | Heel kick | 蹬腿 dēngtuǐ | slow pressing kick with the heel, hips square |
 
+**The 18 External Basics — 十八基本动作.** The integrated study guide keeps
+the complete solo-study reference in [Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md](Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md).
+The Training Hall uses them as a staged catalog, not a day-one demand:
+
+| # | Movement | Practice state here |
+| --- | --- | --- |
+| 1 | Horse Stance Punch | measured foundation: `horse` / `horse_guard` |
+| 2 | Bow Stance Punch | measured foundation: `bow` |
+| 3 | Low Stance Chop Down | shallow `drop_stance`, then human-reviewed strike |
+| 4 | Cat Stance Block | measured foundation: `empty_stance` |
+| 5 | Twisting Low Punch | record-only transition |
+| 6 | Front Stretch Kick | dynamic stretch, range-of-motion recording only |
+| 7 | Low Snap Kick | record-only kick |
+| 8 | High Slap Kick | range-of-motion recording only |
+| 9 | Side Thrust Kick | record-only kick |
+| 10 | Back Kick | record-only kick |
+| 11 | Outside Crescent Kick | range-of-motion recording only |
+| 12 | Inside Crescent Kick | range-of-motion recording only |
+| 13 | Inside Kick Block | record-only defensive arc |
+| 14 | Block-Punch-Kick Combination | record-only combination |
+| 15 | Front Sweep | advanced, human-reviewed, high injury risk |
+| 16 | Scorpion Kick / Tail Sweep | advanced, human-reviewed |
+| 17 | Squat Jump Double Kick | deferred until base, mobility, and landing mechanics exist |
+| 18 | Tornado Kick | deferred; never self-scored by Chirox |
+
 Rule for all of it: 8–10 per side, height earned not forced, counted in
 Mandarin (一, 二, 三…).
 
@@ -285,6 +310,10 @@ first, staff after — often years).
 - **First practices:** grip changes, basic strikes (劈 pī chop, 扫 sǎo
   sweep, 戳 chuō thrust), figure-eight flowers (舞花 wǔhuā), and stance
   integration — staff in Bow Stance, staff in Horse Stance.
+- **Study-guide additions:** normal/wide/narrow grips, slow figure-eight
+  flowers, side spins, forward/reverse propeller changes, chop, horizontal
+  sweep, and thrust lines. Chirox records these as `staff_basics`,
+  `staff_flowers`, or `staff_form`; it does not grade them.
 - **When here:** end of Quarter 2 at the earliest, as a reward for stance
   standards; it doubles as the shoulder-opening bar (压肩) meanwhile.
 - Broadsword (刀 dāo), straight sword (剑 jiàn), and spear (枪 qiāng)
@@ -409,6 +438,29 @@ premature), iron rings (joint tax), sword or spear (costume until the
 staff is honest), weighted vests for kicks (never), and any "iron shirt /
 iron palm secret course." The 72 Arts were never for sale; the counterfeit
 versions still aren't.
+
+---
+
+# Part V — Outdoor Training in Normal and Bloomington
+
+The study guide adds an outdoor lane because some practice needs space: walking,
+running, stance transitions, staff clearance, and filmed forms. Outdoor practice
+is useful only when it is lawful, quiet, and respectful.
+
+Current official-rule snapshot checked July 16, 2026:
+
+| Place | Use | Boundary |
+| --- | --- | --- |
+| Normal public parks | walking, stance rounds, open-space conditioning | public parks are listed as 6 a.m.–9 p.m.; Constitution Trail is dawn to dusk; vehicles stay on designated roadways/parking areas; firearms are prohibited |
+| Maxwell Park | open-space conditioning, hiking trails, cautious staff basics when isolated | official facility page lists 307 N. Parkside Rd, 6 a.m.–9 p.m. daily, 125 acres, sports facilities, natural area, and hiking trails |
+| Bloomington parks | walking, open-space basics after checking the specific facility | listed park regulations: 6 a.m.–10 p.m.; no alcohol or marijuana; firearms prohibited; vehicles on roadways/parking only; pets leashed |
+| Constitution Trail | walking, running, breath pace, linear stepping | no wide staff work; keep right, yield, signal, and do not block the trail |
+
+Wooden staff practice in public is not treated as automatically safe just
+because it is training. If the movement could reasonably alarm someone, shrink
+the motion, move farther away, or train empty-handed.
+
+Official pages are linked from [Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md](Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md).
 
 ---
 

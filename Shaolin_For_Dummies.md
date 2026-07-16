@@ -85,6 +85,8 @@ the last few turns of the sitting, and seals every exchange into the record.
 
 - **"Chirox, read the manual."** → reads `1yeartoShaolin.md` aloud
 - **"Chirox, read the guide."** → reads this document
+- **"Chirox, read the Kung Fu study guide."** → reads
+  `Docs/SHAOLIN_KUNG_FU_STUDY_GUIDE.md`
 - Also readable by voice: **the status report**, **the diet**, **the readme**
 - **"Chirox, stop."** → ends the reading
 
@@ -98,7 +100,7 @@ beginning" to start over. The library (all local, public domain):
 - *Confucianism:* "read me the **analects**" · "read me **mencius**"
 - *Buddhism:* "read me the **dhammapada**" · "read me the **gospel of buddha**" · "read me the **light of asia**"
 - *Strategy:* "read me the **art of war**"
-- Plus any doc: "read me the **manual**", "the **guide**", "the **diet**"
+- Plus any doc: "read me the **manual**", "the **guide**", "the **Kung Fu study guide**", "the **diet**"
 
 (Plain "Chirox, read the manual" — without "me" — still streams continuously
 in the background instead, and only a clear "Chirox, stop" interrupts it.)
@@ -107,6 +109,7 @@ While he's reading in background mode, he ignores everything except a stop
 request — so speak the stop clearly. From the terminal you get more control:
 
 ```powershell
+chirox library                            # show every local thing Chirox can read
 chirox narrate 1yeartoShaolin.md            # read any file aloud
 chirox narrate Diet\README.md --from 40     # resume where you stopped
 chirox narrate 1yeartoShaolin.md --out manual.wav   # render to an audio file

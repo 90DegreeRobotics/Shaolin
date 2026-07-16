@@ -56,6 +56,27 @@ def test_static_frontend_served():
     assert response.headers["cache-control"] == "no-cache, must-revalidate"
 
 
+def test_frontend_notifies_camera_loading_and_busts_asset_cache():
+    import re
+
+    client = TestClient(app)
+    text = client.get("/").text
+    # the mirror says the camera is opening instead of showing a blank stage
+    assert "camLoading" in text
+    assert "Waking the camera" in text
+    # JS/CSS carry a cache-busting version query — the app runs in a persistent
+    # Edge profile that would otherwise serve a stale cockpit after an update
+    assert re.search(r"/static/app\.js\?v=\d+", text), "app.js must be version-busted"
+    assert re.search(r"/static/styles\.css\?v=\d+", text), "styles.css must be version-busted"
+
+
+def test_shipped_app_js_has_head_neck_and_camera_loading():
+    client = TestClient(app)
+    js = client.get("/static/app.js").text
+    assert "drawHeadAndNeck" in js   # the wireguy tracks head and neck
+    assert "showCamLoading" in js    # the camera-loading notification
+
+
 def test_recordings_endpoint_lists_archive():
     client = TestClient(app)
     response = client.get("/api/recordings")

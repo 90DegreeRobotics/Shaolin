@@ -31,6 +31,8 @@ const state = {
   guides: { drills: new Map(), references: [] },
   mode: "training",
   recordDay: null,
+  gotFirstFrame: false,
+  camLoadTimer: null,
 };
 
 const bones = [
@@ -241,6 +243,7 @@ function updateGlobalTruth() {
 }
 
 function renderPayload(role, payload, jpeg) {
+  noteFirstFrame();  // a real frame is painting: the camera is up
   drawFrame(views[role], payload, jpeg);
   updateView(role, payload);
   updateGlobalTruth();
@@ -258,6 +261,7 @@ function openSocket(role) {
       const payload = JSON.parse(event.data);
       if (payload.type === "error") {
         view.msg.textContent = payload.message;
+        showCamLoading(payload.message);  // the camera failed to open — say why
       }
       return;
     }
@@ -295,20 +299,60 @@ function startTimer() {
   }, 500);
 }
 
+// --- camera-loading notification -------------------------------------------------
+// Opening the webcam on Windows can take a few seconds; the mirror says so
+// instead of showing a blank stage, and clears itself the moment a frame lands.
+
+function showCamLoading(text) {
+  const box = $("camLoading");
+  if (!box) return;
+  $("camLoadingText").textContent = text || "Waking the camera…";
+  box.hidden = false;
+}
+
+function hideCamLoading() {
+  const box = $("camLoading");
+  if (box) box.hidden = true;
+  clearTimeout(state.camLoadTimer);
+}
+
+function noteFirstFrame() {
+  if (state.gotFirstFrame) return;
+  state.gotFirstFrame = true;
+  hideCamLoading();
+}
+
 async function mirrorOn() {
   ROLES.forEach(resetView);
-  await post("/api/session/start", { source: state.sources.front, stance: state.stance, role: "front" });
+  state.gotFirstFrame = false;
+  showCamLoading("Waking the camera…");
+  try {
+    await post("/api/session/start", { source: state.sources.front, stance: state.stance, role: "front" });
+  } catch (err) {
+    showCamLoading("Could not reach the camera. Is another app using it?");
+    return;
+  }
   openSocket("front");
   state.running = true;
   $("mirrorBtn").classList.add("on");
   startTimer();
   updateGlobalTruth();
+  // If no frame has painted after a while, keep the notice honest rather than
+  // spinning forever.
+  clearTimeout(state.camLoadTimer);
+  state.camLoadTimer = setTimeout(() => {
+    if (state.running && !state.gotFirstFrame) {
+      showCamLoading("Camera is taking longer than usual to open…");
+    }
+  }, 8000);
 }
 
 async function mirrorOff() {
   ROLES.forEach(closeSocket);
   await post("/api/session/stop").catch(() => {});
   state.running = false;
+  state.gotFirstFrame = false;
+  hideCamLoading();
   $("mirrorBtn").classList.remove("on");
   clearInterval(state.timer);
   ROLES.forEach(resetView);

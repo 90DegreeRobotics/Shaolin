@@ -135,7 +135,14 @@ model; and two capabilities remain honestly gated on physical hardware.
     the developer surface; the practitioner's surfaces are the deck and the voice.
   - `web/` - a local-only mode cockpit (FastAPI on `127.0.0.1:8765`, opened as its
     own app window by the desktop **Chirox** shortcut - no address bar, its own
-    clean browser profile, cache-proof by three layers). **Training Mode** is the
+    browser profile). **Launch + camera legibility (2026-07-16):** the shortcut now
+    opens **fullscreen** (`--start-fullscreen`; F11 to drop out), and the mirror
+    shows a **"Waking the camera…" overlay** (spinner + honest text) the moment
+    MIRROR starts, clearing on the first painted frame and turning into the real
+    reason if the camera fails to open. The persistent Edge profile means CSS/JS
+    are cache-busted by an explicit `?v=` query that MUST be bumped on every
+    change (it was the reason a fresh wireframe could look unchanged on launch;
+    now at `v=10`). **Training Mode** is the
     current primary practice surface: one built-in-webcam mirror, wireframe overlay,
     reference exercise guide, deterministic stance metrics, and explicit Measured /
     Uncertain / No-body truth states. **Head and neck (2026-07-16):** the cockpit
@@ -173,7 +180,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck
     remains a measured experiment, not the default practitioner path.
-- `tests/` - 232 passing unit tests as of `python -m pytest` on 2026-07-16.
+- `tests/` - 234 passing unit tests as of `python -m pytest` on 2026-07-16.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

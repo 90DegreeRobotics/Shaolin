@@ -14,7 +14,14 @@ from chirox.vision.multicam import CameraRegistry
 from chirox.vision.pipeline import points_from_landmarks
 from chirox.vision.stances import STANCES
 
+# Landmarks the cockpit wireframe DRAWS. Head points (nose + both ears) are
+# here so the mirror shows a head and neck that follow the practitioner; they
+# are overlay-only and never reach the deterministic stance geometry, which
+# reads its own 12-joint map in ``vision/pipeline.points_from_landmarks``.
 POSE_INDEX = {
+    0: "nose",
+    7: "left_ear",
+    8: "right_ear",
     11: "left_shoulder",
     12: "right_shoulder",
     13: "left_elbow",

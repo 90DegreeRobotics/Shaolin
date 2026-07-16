@@ -6,7 +6,8 @@ from chirox.vision.multicam import CameraRegistry
 from chirox.vision.stances import StanceReading
 from chirox.web.app import app
 from chirox.web.live import (
-    LiveSessionManager, SessionConfig, known_cameras, pack_frame, serialize_reading, unpack_frame,
+    LiveSessionManager, SessionConfig, known_cameras, landmarks_payload, pack_frame,
+    serialize_reading, unpack_frame,
 )
 
 
@@ -207,6 +208,21 @@ def test_session_stop_is_idempotent():
 def test_known_cameras_derive_from_the_rig_registry():
     rig = {c.role: c.source for c in CameraRegistry.default_rig().cameras}
     assert {cam["role"]: cam["source"] for cam in known_cameras()} == rig
+
+
+def test_landmarks_payload_tracks_head_and_neck():
+    # The cockpit wireframe must carry head points (nose + both ears) so the
+    # mirror can draw a head and neck that follow the practitioner — plus the
+    # shoulders the neck hangs from.
+    class Lm:
+        x = 0.4
+        y = 0.3
+        visibility = 0.9
+
+    payload = landmarks_payload([Lm() for _ in range(33)])
+    names = {p["name"] for p in payload}
+    assert {"nose", "left_ear", "right_ear"} <= names
+    assert {"left_shoulder", "right_shoulder"} <= names
 
 
 def test_pack_frame_round_trips_header_and_jpeg():

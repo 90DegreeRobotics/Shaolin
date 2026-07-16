@@ -59,6 +59,11 @@ async function post(url, body) {
 
 // --- skeleton rendering (unchanged truth: visibility-weighted, amber when uncertain)
 
+// Head landmarks (nose + ears) drive the head circle and neck, not scattered
+// dots — the wireguy gets a head that follows the practitioner, not a face full
+// of markers.
+const HEAD_POINTS = new Set(["nose", "left_ear", "right_ear"]);
+
 function pointOf(landmarks, name) {
   return landmarks.find((lm) => lm.name === name);
 }
@@ -67,6 +72,68 @@ function toCanvasPoint(canvas, lm) {
   const mirrored = $("mirrorToggle").checked;
   const x = mirrored ? (1 - lm.x) * canvas.width : lm.x * canvas.width;
   return { x, y: lm.y * canvas.height, visibility: lm.visibility };
+}
+
+// Neck (shoulder midpoint -> head) and a floating head circle. Head centre is
+// the midpoint of the ears when visible (the middle of the skull); radius comes
+// from the ear span, falling back to shoulder width when the head is turned so
+// the head never vanishes. Returns nothing when there is no head to draw.
+function drawHeadAndNeck(ctx, canvas, landmarks, stroke) {
+  const nose = pointOf(landmarks, "nose");
+  const ls = pointOf(landmarks, "left_shoulder");
+  const rs = pointOf(landmarks, "right_shoulder");
+  const le = pointOf(landmarks, "left_ear");
+  const re = pointOf(landmarks, "right_ear");
+  if (!nose && !(le && re)) return;
+
+  let head;
+  if (le && re) {
+    const pl = toCanvasPoint(canvas, le);
+    const pr = toCanvasPoint(canvas, re);
+    head = { x: (pl.x + pr.x) / 2, y: (pl.y + pr.y) / 2, visibility: Math.min(pl.visibility, pr.visibility) };
+  } else {
+    head = toCanvasPoint(canvas, nose);
+  }
+
+  let radius = canvas.width / 22;
+  if (le && re) {
+    const pl = toCanvasPoint(canvas, le);
+    const pr = toCanvasPoint(canvas, re);
+    radius = Math.max(radius, Math.hypot(pl.x - pr.x, pl.y - pr.y) * 0.7);
+  }
+
+  let neckBase = null;
+  if (ls && rs) {
+    const pl = toCanvasPoint(canvas, ls);
+    const pr = toCanvasPoint(canvas, rs);
+    neckBase = {
+      x: (pl.x + pr.x) / 2,
+      y: (pl.y + pr.y) / 2,
+      visibility: Math.min(pl.visibility, pr.visibility),
+    };
+  }
+
+  // Neck: from the shoulders up to the bottom of the head circle (trimmed so the
+  // line meets the head cleanly instead of stabbing through it).
+  if (neckBase) {
+    const dx = head.x - neckBase.x;
+    const dy = head.y - neckBase.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const top = { x: head.x - (dx / dist) * radius, y: head.y - (dy / dist) * radius };
+    const alpha = Math.max(0.12, Math.min(neckBase.visibility, head.visibility) * state.opacity);
+    ctx.strokeStyle = `rgba(${stroke}, ${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(neckBase.x, neckBase.y);
+    ctx.lineTo(top.x, top.y);
+    ctx.stroke();
+  }
+
+  // Head: an open circle that rides the practitioner's head.
+  const headAlpha = Math.max(0.18, head.visibility * state.opacity);
+  ctx.strokeStyle = `rgba(${stroke}, ${headAlpha})`;
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function drawSkeleton(view, landmarks, reading) {
@@ -88,7 +155,9 @@ function drawSkeleton(view, landmarks, reading) {
     ctx.lineTo(pb.x, pb.y);
     ctx.stroke();
   }
+  drawHeadAndNeck(ctx, canvas, landmarks, stroke);
   for (const lm of landmarks) {
+    if (HEAD_POINTS.has(lm.name)) continue; // the head is a circle, not three face dots
     const p = toCanvasPoint(canvas, lm);
     ctx.fillStyle = `rgba(${stroke}, ${Math.max(0.18, p.visibility * state.opacity)})`;
     ctx.beginPath();

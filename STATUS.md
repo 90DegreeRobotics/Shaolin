@@ -138,7 +138,15 @@ model; and two capabilities remain honestly gated on physical hardware.
     clean browser profile, cache-proof by three layers). **Training Mode** is the
     current primary practice surface: one built-in-webcam mirror, wireframe overlay,
     reference exercise guide, deterministic stance metrics, and explicit Measured /
-    Uncertain / No-body truth states. **The Training Hall (2026-07-06):** the full
+    Uncertain / No-body truth states. **Head and neck (2026-07-16):** the cockpit
+    wireframe now draws a head — an open circle riding the midpoint of the ears,
+    sized from the ear span (falling back to shoulder width when the head is
+    turned) — joined by a neck line to the shoulder midpoint, so the mirror shows
+    a whole practitioner instead of a headless figure. Head landmarks (nose + both
+    ears) are overlay-only: they never touch the deterministic stance geometry,
+    which still reads its own 12-joint map. Verified 2026-07-16 by driving the
+    overlay with a synthetic full-body pose: an open head ring and a continuous
+    neck render above the shoulders where nothing was drawn before. **The Training Hall (2026-07-06):** the full
     24-drill catalog lives ON the page (grouped: stances/balance, legs, floor/core,
     qigong), each drill mapped by eye to its OWN chart among the practitioner's ten
     posters (real printed titles, never "Reference N"); all ten charts sit on a
@@ -165,7 +173,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck
     remains a measured experiment, not the default practitioner path.
-- `tests/` - 226 passing unit tests as of `python -m pytest` on 2026-07-16.
+- `tests/` - 227 passing unit tests as of `python -m pytest` on 2026-07-16.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

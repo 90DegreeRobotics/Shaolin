@@ -13,12 +13,16 @@ The current authority is:
 4. `1yeartoShaolin.md`
 5. `Mandarin/README.md`
 6. `ROADMAP.md`
+7. `TRUTH_AUDIT.md`
 
 ## Why These Files Are Archived
 
 Some earlier drafts used stronger transformation language, broader claims, or intensity phrasing that does not match the current no-false-mastery standard.
 
 They may still contain useful fragments, but a public reader should not treat them as the live path without comparing them to the current manual and safety file.
+
+Hardware witness run-sheets may also be archived here when a newer canonical
+protocol exists. The current protocol is `HARDWARE_WITNESS_PROTOCOL.md`.
 
 ## Rule
 

@@ -22,6 +22,10 @@ __pycache__/
 # Local witness artifacts that may contain personal data
 Dojo/witness/*.local.*
 
+# Generated study artifacts (stroke-order renders, local exports, experiments).
+# Promote specific files deliberately only after provenance/licensing is checked.
+Dojo/artifacts/
+
 # Local dev-tool configuration — not project content.
 .claude/
 

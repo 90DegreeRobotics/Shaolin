@@ -173,7 +173,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
     instead of silently rewriting history. The previous multi-camera control deck
     remains a measured experiment, not the default practitioner path.
-- `tests/` - 227 passing unit tests as of `python -m pytest` on 2026-07-16.
+- `tests/` - 232 passing unit tests as of `python -m pytest` on 2026-07-16.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.
@@ -192,8 +192,17 @@ model; and two capabilities remain honestly gated on physical hardware.
   this stage. Multicam fusion returns only after calibration makes it earn its place.
 - **Voice conversation on the live mic.** The ear daemon runs on hardware, the wake
   loop passes self-test, and one full conversation round is verified against local
-  Ollama — but a live spoken exchange (practitioner's voice → wake → answer) has
-  not been formally witnessed in a log. One "Chirox, what day is it?" closes this.
+  Ollama. **Hardened + witnessed 2026-07-16:** the `--once` proof path now holds
+  until Chirox is actually addressed and answers (stray room noise no longer ends
+  the run early), and every exchange is captured to an inspectable witness log
+  (`Dojo/witness/live_exchange_<stamp>.local.md`, git-ignored). The no-mic
+  self-test now proves the **whole chain including the day answer** — Piper spoke
+  "Chirox, what day is it today?", Whisper transcribed it verbatim, it routed to
+  `day`, and "Day 18 of 365 — Phase 1" rendered: PASS, witness written and
+  inspected on the build laptop. The one remaining step is the practitioner's own
+  live utterance into the microphone — `python -m chirox.cli listen --once`,
+  "Chirox, what day is it?" — which now writes that same witness artifact. Until
+  that mic run, the gate stays open.
 - **Wireframe noise floor.** The audit tool is built and run on archive footage
   (upper body only). Unmeasured: angle jitter on a full-body still hold — the
   number that says whether stance angles can track growth. Protocol: full body in

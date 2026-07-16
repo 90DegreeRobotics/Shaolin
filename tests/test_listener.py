@@ -2,7 +2,9 @@
 
 import numpy as np
 
-from chirox.listener import SpeechSegmenter, match_wake, route
+from chirox.listener import (
+    ChiroxEar, LiveExchangeWitness, SpeechSegmenter, match_wake, route,
+)
 
 
 # --- wake word ---------------------------------------------------------------------
@@ -161,3 +163,65 @@ def test_segmenter_reset_drops_in_progress_speech():
     seg.reset()                  # …but Chirox began talking; drop it
     got = _feed(seg, _blocks(0.001, 10))
     assert got == []
+
+
+# --- live-exchange witness (the Gate 2 artifact) -------------------------------------
+
+
+def test_witness_no_wake_verdict_and_render(tmp_path):
+    w = LiveExchangeWitness(device=1, whisper_model="base.en", samplerate=16000)
+    w.record(heard="the tv is on in the other room", woken=False, note="not addressed")
+    assert not w.woke and not w.answered
+    assert "NO WAKE" in w.verdict()
+    text = w.render()
+    assert "Live Exchange Witness" in text
+    assert "the tv is on" in text
+
+
+def test_witness_records_a_passing_exchange(tmp_path):
+    w = LiveExchangeWitness()
+    w.record(heard="the weather is nice", woken=False, note="not addressed")
+    w.record(heard="Chirox what day is it", woken=True, command="what day is it",
+             route="day", answer="Day 18. Stabilize.", spoken=True)
+    assert w.woke and w.answered
+    assert "PASS" in w.verdict()
+    path = w.write(tmp_path / "exchange.local.md")
+    body = path.read_text(encoding="utf-8")
+    assert "PASS" in body
+    assert "Day 18. Stabilize." in body
+    assert "route: day" in body
+
+
+def test_witness_wake_without_answer_is_partial():
+    w = LiveExchangeWitness()
+    w.record(heard="Chirox", woken=True, note="bare wake — no command")
+    assert w.woke and not w.answered
+    assert "PARTIAL" in w.verdict()
+
+
+# --- the ear's exchange handling (no audio: speak_replies=False) ---------------------
+
+
+def test_handle_transcript_witnesses_the_day_exchange():
+    ear = ChiroxEar(speak_replies=False)
+    ear._witness = LiveExchangeWitness()
+    keep_going = ear.handle_transcript("Chirox, what day is it?")
+    assert keep_going is True
+    assert ear._exchange_done is True
+    last = ear._witness.entries[-1]
+    assert last["woken"] is True
+    assert last["route"] == "day"
+    assert last["answer"].strip()           # the day headline actually rendered
+    assert ear._witness.answered
+
+
+def test_exchange_done_only_flips_on_a_real_address():
+    ear = ChiroxEar(speak_replies=False)
+    ear._witness = LiveExchangeWitness()
+    # stray room noise must NOT count as the "one exchange" that ends --once
+    assert ear.handle_transcript("the weather is nice today") is True
+    assert ear._exchange_done is False
+    assert ear._witness.entries[-1]["woken"] is False
+    # an addressed command does
+    ear.handle_transcript("Chirox, what day is it?")
+    assert ear._exchange_done is True

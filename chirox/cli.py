@@ -286,12 +286,17 @@ def cmd_narrate(args) -> int:
 
 
 def cmd_listen(args) -> int:
-    from chirox.listener import ChiroxEar, self_test
+    from chirox.listener import ChiroxEar, LiveExchangeWitness, self_test
 
     if args.self_test:
-        return 0 if self_test() else 1
+        return 0 if self_test(witness=args.witness) else 1
     ear = ChiroxEar(device=args.device, speak_replies=not args.no_speak)
-    ear.run(once=args.once)
+    witness = None
+    if args.once or args.witness:
+        witness = LiveExchangeWitness(device=args.device, aliases=ear.aliases,
+                                      whisper_model=ear.config.whisper_model,
+                                      samplerate=ChiroxEar.SAMPLERATE)
+    ear.run(once=args.once, witness=witness)
     return 0
 
 
@@ -489,9 +494,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     ls = sub.add_parser("listen", help="the always-on ear: wake word 'Chirox'")
     ls.add_argument("--device", type=int, default=None, help="input device index")
-    ls.add_argument("--once", action="store_true", help="handle one utterance then exit (mic check)")
-    ls.add_argument("--self-test", action="store_true", help="prove TTS→STT→wake routing, no mic")
+    ls.add_argument("--once", action="store_true", help="hold until one addressed exchange completes, then exit")
+    ls.add_argument("--self-test", action="store_true", help="prove TTS→STT→wake→answer, no mic")
     ls.add_argument("--no-speak", action="store_true", help="print replies instead of speaking")
+    ls.add_argument("--witness", action="store_true",
+                    help="write an inspectable witness log of the exchange (implied by --once)")
     ls.set_defaults(func=cmd_listen)
 
     sy = sub.add_parser("say", help="Chirox speaks a line aloud (voice check)")

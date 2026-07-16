@@ -44,6 +44,11 @@ Command:
 python -m chirox.cli listen --once
 ```
 
+`--once` holds until Chirox is actually addressed and answers, then exits — stray
+room noise no longer ends the run early. It writes an inspectable witness log to
+`Dojo/witness/live_exchange_<stamp>.local.md` (git-ignored: it carries the
+practitioner's own words). `listen --witness` does the same for a normal session.
+
 Speak:
 
 ```text
@@ -52,9 +57,21 @@ Chirox, what day is it?
 
 Pass evidence:
 
-- transcript includes the wake command or accepted wake alias
-- Chirox prints or speaks the day answer
-- if the model is unavailable, the failure is honest
+- the witness log exists and its Verdict reads `PASS`
+- the logged transcript includes the wake command or an accepted wake alias
+- Chirox prints or speaks the day answer (also captured in the log)
+- if the model is unavailable, the log records the honest silence, not a fabrication
+
+Before the mic run, the same chain minus the microphone can be proven end to end:
+
+```powershell
+python -m chirox.cli listen --self-test --witness
+```
+
+This has Chirox speak the phrase with his own mouth, hears it back through
+Whisper, routes it, and renders the day answer — verified `PASS` on the build
+laptop 2026-07-16. It leaves a self-test witness log; only the live mic run
+closes the gate.
 
 ## Gate 3: Fused Dual-Camera Verdict
 

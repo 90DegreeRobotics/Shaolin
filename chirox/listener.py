@@ -118,6 +118,123 @@ def stop_requested(norm: str, woken: bool) -> bool:
     return "stop" in words and (woken or len(words) <= 3)
 
 
+# --- live-exchange witness (the artifact that closes Gate 2) ----------------------
+
+
+class LiveExchangeWitness:
+    """A plain, inspectable log of a live spoken exchange with the ear.
+
+    This is the artifact that turns "Chirox, what day is it?" from a claim into
+    evidence: every transcript the ear heard, whether it was taken as an address,
+    how it routed, and what Chirox answered. Pure text assembly — writing the
+    markdown is the only side effect.
+
+    It lives under ``Dojo/witness`` with a ``.local.`` infix so it is git-ignored
+    by the existing rule (it carries the practitioner's own spoken words, which
+    are private runtime data, never committed).
+    """
+
+    LIVE_CONTEXT = "the always-on ear on a live microphone (`chirox listen --once`)"
+
+    def __init__(self, device=None, aliases=None, whisper_model=None,
+                 samplerate: int | None = None, context: str | None = None):
+        from datetime import datetime, timezone
+
+        self.started_at = datetime.now(timezone.utc)
+        self.device = device
+        self.aliases = list(aliases or WAKE_ALIASES)
+        self.whisper_model = whisper_model
+        self.samplerate = samplerate
+        self.context = context or self.LIVE_CONTEXT
+        self.entries: list[dict] = []
+
+    def record(self, *, heard: str, woken: bool, command: str = "", route: str = "",
+               answer: str = "", spoken: bool = False, note: str = "") -> dict:
+        from datetime import datetime, timezone
+
+        entry = {
+            "at": datetime.now(timezone.utc).isoformat(),
+            "heard": heard,
+            "woken": bool(woken),
+            "command": command,
+            "route": route,
+            "answer": answer,
+            "spoken": bool(spoken),
+            "note": note,
+        }
+        self.entries.append(entry)
+        return entry
+
+    @property
+    def woke(self) -> bool:
+        """Was Chirox ever actually addressed (wake word matched)?"""
+        return any(e["woken"] for e in self.entries)
+
+    @property
+    def answered(self) -> bool:
+        """Did an addressed exchange produce a spoken/printed answer?"""
+        return any(e["woken"] and e["command"] and e["answer"] for e in self.entries)
+
+    def verdict(self) -> str:
+        if self.answered:
+            return "PASS — the wake word was heard and an answer was produced."
+        if self.woke:
+            return "PARTIAL — the wake word was heard, but no answer was produced."
+        if self.entries:
+            return "NO WAKE — audio was heard and transcribed, but never as an address to Chirox."
+        return "NO AUDIO — nothing was transcribed."
+
+    def render(self) -> str:
+        lines = ["# Chirox Live Exchange Witness"]
+        lines.append(f"## {self.started_at.strftime('%Y-%m-%d %H:%M:%SZ')}")
+        lines.append("")
+        lines.append(f"A recorded spoken exchange with {self.context}. Private "
+                     "runtime data — the practitioner's own words — git-ignored, "
+                     "not committed.")
+        lines.append("")
+        lines.append("## Setup")
+        lines.append(f"- device: {self.device if self.device is not None else 'default'}")
+        lines.append(f"- whisper model: {self.whisper_model or 'default'}")
+        lines.append(f"- samplerate: {self.samplerate or 'n/a'}")
+        lines.append(f"- wake aliases: {', '.join(self.aliases)}")
+        lines.append("")
+        lines.append("## What the ear heard")
+        if not self.entries:
+            lines.append("- (nothing transcribed)")
+        for i, e in enumerate(self.entries, 1):
+            when = e["at"][11:19]
+            lines.append(f"{i}. [{when}] heard: \"{e['heard']}\"")
+            if e["woken"]:
+                routed = f" → route: {e['route']}" if e["route"] else ""
+                lines.append(f"   - woken: yes → command: \"{e['command']}\"{routed}")
+                if e["answer"]:
+                    verb = "spoke" if e["spoken"] else "printed"
+                    lines.append(f"   - Chirox {verb}: \"{e['answer']}\"")
+            else:
+                lines.append("   - woken: no (not taken as an address to Chirox)")
+            if e["note"]:
+                lines.append(f"   - note: {e['note']}")
+        lines.append("")
+        lines.append("## Verdict")
+        lines.append(self.verdict())
+        lines.append("")
+        return "\n".join(lines)
+
+    def default_path(self):
+        from chirox.config import REPO_ROOT
+
+        stamp = self.started_at.strftime("%Y%m%d_%H%M%S")
+        return REPO_ROOT / "Dojo" / "witness" / f"live_exchange_{stamp}.local.md"
+
+    def write(self, path=None):
+        from pathlib import Path
+
+        target = Path(path) if path else self.default_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(self.render(), encoding="utf-8")
+        return target
+
+
 # --- energy-gate speech segmenter (pure state machine) ----------------------------
 
 
@@ -225,6 +342,9 @@ class ChiroxEar:
         self._reset_segmenter = False
         self._panic = threading.Event()  # Ctrl+Alt+0: silence everything NOW
         self._chat: list[tuple[str, str]] = []  # this sitting's conversation turns
+        self._witness: LiveExchangeWitness | None = None  # opt-in exchange log
+        self._last_answer = ""    # the reply to the command being handled
+        self._exchange_done = False  # an addressed exchange completed (for --once)
         self.running = False
 
     def panic(self) -> None:
@@ -266,6 +386,7 @@ class ChiroxEar:
     def _say(self, text: str) -> None:
         """Speak with the mic paused — Chirox must not hear himself."""
         print(f"[ear] chirox: {text}")
+        self._last_answer = text  # the single choke point for short spoken replies
         if not self.speak_replies:
             return
         if self._stream is not None:
@@ -428,6 +549,7 @@ class ChiroxEar:
             self._say("The Master is silent — he gave no words.")
             return
         answer = " ".join(spoken)
+        self._last_answer = answer
         self._chat.append((question, answer))
         self._chat = self._chat[-8:]  # a sitting's worth of context; the codex holds the rest
         try:
@@ -488,6 +610,23 @@ class ChiroxEar:
         self._converse_and_speak(command)
         return True
 
+    def _record_witness(self, *, heard: str, woken: bool, command: str = "",
+                        route: str = "", note: str = "") -> None:
+        """Append one line to the live-exchange witness, if one is active.
+
+        Witnessing must never disturb the ear — a failed log is printed, not
+        raised."""
+        if self._witness is None:
+            return
+        try:
+            self._witness.record(
+                heard=heard, woken=woken, command=command, route=route,
+                answer=self._last_answer if woken and command else "",
+                spoken=self.speak_replies, note=note,
+            )
+        except Exception as exc:
+            print(f"[ear] (witness record failed: {exc})")
+
     def handle_transcript(self, text: str) -> bool:
         """Wake/command state machine over one transcript. Returns False to stop."""
         text = text.strip()
@@ -509,25 +648,36 @@ class ChiroxEar:
             if stop_requested(_normalize(text), woken):
                 stop_narration()
                 self._say("Reading stopped.")
+                self._record_witness(heard=text, woken=woken, note="stop during narration")
             else:
                 print(f'[ear] (narration playing) "{text}"')
+                self._record_witness(heard=text, woken=False, note="narration echo ignored")
             return True
 
         if woken:
             print(f'[ear] wake word heard: "{text}"')
             if command:
-                return self.handle_command(command)
+                self._last_answer = ""            # this command's own reply
+                kind = route(command)
+                keep_going = self.handle_command(command)
+                self._record_witness(heard=text, woken=True, command=command, route=kind)
+                self._exchange_done = True        # an addressed exchange completed
+                return keep_going
             self._say("Say my name and the command together.")
+            self._record_witness(heard=text, woken=True, note="bare wake — no command")
             self._awaiting_until = 0.0
             return True
         print(f'[ear] (not for me) "{text}"')
+        self._record_witness(heard=text, woken=False, note="not addressed")
         return True
 
     # --- main loop ------------------------------------------------------------------
 
-    def run(self, once: bool = False) -> None:
+    def run(self, once: bool = False, witness: "LiveExchangeWitness | None" = None) -> None:
         import sounddevice as sd
 
+        self._witness = witness
+        self._exchange_done = False
         segmenter = SpeechSegmenter()
         self._stream = sd.InputStream(
             samplerate=self.SAMPLERATE, channels=1, dtype="float32",
@@ -563,20 +713,32 @@ class ChiroxEar:
                         continue
                     text = self._transcribe_segment(segment)
                     keep_going = self.handle_transcript(text)
-                    if once and text.strip():
+                    # --once proves the loop: keep listening past stray room noise
+                    # until Chirox is actually addressed and answers, then stop.
+                    if once and self._exchange_done:
                         break
                     if not keep_going:
                         break
             except KeyboardInterrupt:
                 print("\n[ear] interrupted — resting.")
+        if self._witness is not None:
+            try:
+                path = self._witness.write()
+                print(f"[ear] witness written: {path}")
+                print(f"[ear] {self._witness.verdict()}")
+            except Exception as exc:
+                print(f"[ear] (witness write failed: {exc})")
         self.running = False
 
 
 # --- self test (no microphone needed) ------------------------------------------------
 
 
-def self_test() -> bool:
-    """Prove the loop TTS→STT→wake→route with Chirox's own mouth as the speaker."""
+def self_test(witness: bool = False) -> bool:
+    """Prove the loop TTS→STT→wake→route→**answer** with Chirox's own mouth as
+    the speaker — the whole chain except the physical mic. With ``witness`` the
+    proof is written to an inspectable log, exactly as the live ear writes one.
+    """
     from chirox.voice import Voice
 
     v = Voice()
@@ -587,8 +749,25 @@ def self_test() -> bool:
     print(f'[self-test] whisper heard:    "{heard}"')
     woken, command = match_wake(heard)
     kind = route(command) if woken else "-"
+    # Prove the answer actually renders — routing alone is not an exchange.
+    answer = ""
+    if woken and kind == "day":
+        try:
+            answer = ChiroxEar(speak_replies=False)._answer_day()
+        except Exception as exc:
+            print(f"[self-test] (day answer failed: {exc})")
     print(f"[self-test] wake={woken} command={command!r} route={kind}")
-    ok = woken and kind == "day"
+    print(f'[self-test] day answer:       "{answer}"')
+    ok = bool(woken and kind == "day" and answer.strip())
+    if witness:
+        log = LiveExchangeWitness(device="self-test (no mic)",
+                                  whisper_model=v._whisper_name,
+                                  samplerate=ChiroxEar.SAMPLERATE,
+                                  context="the TTS→STT self-test (Chirox's own mouth, no microphone)")
+        log.record(heard=heard, woken=woken, command=command, route=kind,
+                   answer=answer, spoken=False, note="TTS→STT self-test, no microphone")
+        path = log.write()
+        print(f"[self-test] witness written: {path}")
     print(f"[self-test] {'PASS' if ok else 'FAIL'}")
     return ok
 
@@ -599,9 +778,11 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Chirox always-on wake-word ear")
     ap.add_argument("--device", type=int, default=None, help="input device index (see --list-devices)")
     ap.add_argument("--list-devices", action="store_true", help="list audio devices and exit")
-    ap.add_argument("--self-test", action="store_true", help="prove TTS→STT→wake routing without a mic")
-    ap.add_argument("--once", action="store_true", help="handle one utterance then exit (mic check)")
+    ap.add_argument("--self-test", action="store_true", help="prove TTS→STT→wake→answer without a mic")
+    ap.add_argument("--once", action="store_true", help="hold until one addressed exchange completes, then exit")
     ap.add_argument("--no-speak", action="store_true", help="print replies instead of speaking them")
+    ap.add_argument("--witness", action="store_true",
+                    help="write an inspectable witness log of the exchange (implied by --once)")
     args = ap.parse_args(argv)
 
     if args.list_devices:
@@ -610,10 +791,15 @@ def main(argv=None) -> int:
         print(sd.query_devices())
         return 0
     if args.self_test:
-        return 0 if self_test() else 1
+        return 0 if self_test(witness=args.witness) else 1
 
     ear = ChiroxEar(device=args.device, speak_replies=not args.no_speak)
-    ear.run(once=args.once)
+    witness = None
+    if args.once or args.witness:
+        witness = LiveExchangeWitness(device=args.device, aliases=ear.aliases,
+                                      whisper_model=ear.config.whisper_model,
+                                      samplerate=ChiroxEar.SAMPLERATE)
+    ear.run(once=args.once, witness=witness)
     return 0
 
 

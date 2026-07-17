@@ -10,14 +10,15 @@ silence before the first word. The narrator instead:
 3. synthesizes the *next* chunk while the current one plays — so narration of
    any length starts within seconds and runs on a laptop's worth of memory.
 
-The narrator voice is separate from the Master's: ``en_US-ryan-high``, a deep,
-even, audiobook-grade Piper voice, paced slightly slower than conversation.
-Everything is local — the voice model is fetched once and kept.
+One being, one voice: the narrator speaks with the Master's Piper voice
+(``en_GB-alan-medium``). Everything is local — the voice model is fetched once
+and kept.
 
 A running narration writes a PID lock so the ear can control it by voice:
-"Chirox, read the manual" starts one; "Chirox, stop" ends it. While narration
-plays, the ear ignores everything except stop requests — otherwise it would
-wake itself every time the narrator speaks the word "Chirox".
+"Chirox, read the manual" starts one; "Chirox, stop" ends it. The parent
+claims the lock as soon as the child process is spawned (before Piper loads),
+so early spoken "Chirox" from the book cannot wake the ear. While narration
+plays, the ear ignores everything except stop requests.
 
 Run it:   chirox narrate 1yeartoShaolin.md
           chirox narrate --text "..." | --out reading.wav | --from 12
@@ -284,6 +285,19 @@ def narration_pid() -> int | None:
     return None
 
 
+def claim_narration_lock(pid: int) -> Path:
+    """Write the narration/training PID lock before the child loads Piper.
+
+    The ear uses this lock to ignore wake-word echo. Claiming in the parent
+    closes the race where the child is already speaking but has not yet written
+    its own lock file.
+    """
+    lock = _lock_path()
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text(str(int(pid)), encoding="utf-8")
+    return lock
+
+
 def stop_narration() -> bool:
     pid = narration_pid()
     if pid is None:
@@ -321,6 +335,7 @@ def spawn_narration(path: Path, voice: str | None = None) -> int:
     flags = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
     proc = subprocess.Popen(args, cwd=str(REPO_ROOT), creationflags=flags,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    claim_narration_lock(proc.pid)
     return proc.pid
 
 

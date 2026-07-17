@@ -186,3 +186,34 @@ def test_prepare_strips_gutenberg_boilerplate(tmp_path):
     assert "eternal way" in joined
     assert "license junk" not in joined
     assert "more junk" not in joined
+
+
+# --- narration lock (ear echo gate) -----------------------------------------------------
+
+
+def test_claim_narration_lock_writes_pid(tmp_path, monkeypatch):
+    from chirox.narrator import claim_narration_lock, narration_pid
+
+    lock = tmp_path / "_narration.pid"
+    monkeypatch.setattr("chirox.narrator._lock_path", lambda: lock)
+    monkeypatch.setattr("chirox.narrator._pid_alive", lambda pid: pid == 4242)
+    claim_narration_lock(4242)
+    assert lock.read_text(encoding="utf-8").strip() == "4242"
+    assert narration_pid() == 4242
+
+
+def test_spawn_narration_claims_lock_before_returning(tmp_path, monkeypatch):
+    import subprocess
+
+    from chirox import narrator
+
+    lock = tmp_path / "_narration.pid"
+    monkeypatch.setattr(narrator, "_lock_path", lambda: lock)
+
+    class _Proc:
+        pid = 9090
+
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: _Proc())
+    pid = narrator.spawn_narration(tmp_path / "manual.md")
+    assert pid == 9090
+    assert lock.read_text(encoding="utf-8").strip() == "9090"

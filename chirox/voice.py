@@ -13,11 +13,18 @@ on machines without audio hardware.
 
 from __future__ import annotations
 
+import urllib.error
 import urllib.request
 import wave
 from pathlib import Path
 
 PIPER_VOICE = "en_GB-alan-medium"  # a calm British male voice, fitting for the Master
+PIPER_DOWNLOAD_TIMEOUT_S = 120
+PIPER_MIN_ONNX_BYTES = 100_000  # a real Piper voice is megabytes; refuse tiny garbage
+
+
+class VoiceNotReady(RuntimeError):
+    """Piper or Whisper is missing/broken — speak this honestly, never invent sound."""
 
 
 def _piper_url_base(voice: str) -> str:
@@ -34,17 +41,50 @@ def _voice_dir() -> Path:
     return VOICE_DIR
 
 
+def _download_once(url: str, path: Path, *, timeout: float = PIPER_DOWNLOAD_TIMEOUT_S,
+                   min_bytes: int = 1) -> None:
+    """Fetch ``url`` to ``path`` atomically (temp + replace). Timeout + size check."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".part")
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            data = resp.read()
+        if len(data) < min_bytes:
+            raise VoiceNotReady(
+                f"download of {path.name} was too small ({len(data)} bytes) — refusing to use it"
+            )
+        tmp.write_bytes(data)
+        tmp.replace(path)
+    except VoiceNotReady:
+        raise
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise VoiceNotReady(f"could not download {path.name}: {exc}") from exc
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def ensure_piper(voice: str = PIPER_VOICE) -> tuple[Path, Path]:
-    """Return (onnx, config) paths for the Piper voice, downloading once if absent."""
+    """Return (onnx, config) paths for the Piper voice, downloading once if absent.
+
+    Downloads use a timeout and refuse truncated files. Failures raise
+    ``VoiceNotReady`` so the ear can speak honesty instead of hanging forever.
+    """
     d = _voice_dir()
     d.mkdir(parents=True, exist_ok=True)
     onnx, cfg = d / f"{voice}.onnx", d / f"{voice}.onnx.json"
     base = _piper_url_base(voice)
-    for path, url in ((onnx, f"{base}/{voice}.onnx"), (cfg, f"{base}/{voice}.onnx.json")):
-        if not path.exists():
-            # ASCII only: Windows consoles default to cp1252 and choke on arrows
-            print(f"Downloading Chirox's voice (once) -> {path.name} ...")
-            urllib.request.urlretrieve(url, path)
+    for path, url, minimum in (
+        (onnx, f"{base}/{voice}.onnx", PIPER_MIN_ONNX_BYTES),
+        (cfg, f"{base}/{voice}.onnx.json", 20),
+    ):
+        if path.exists() and path.stat().st_size >= minimum:
+            continue
+        # ASCII only: Windows consoles default to cp1252 and choke on arrows
+        print(f"Downloading Chirox's voice (once) -> {path.name} ...")
+        _download_once(url, path, min_bytes=minimum)
     return onnx, cfg
 
 
@@ -97,8 +137,13 @@ class Voice:
         if self._piper is None:
             from piper import PiperVoice
 
-            onnx, cfg = ensure_piper(self._piper_name)
-            self._piper = PiperVoice.load(str(onnx), config_path=str(cfg))
+            try:
+                onnx, cfg = ensure_piper(self._piper_name)
+                self._piper = PiperVoice.load(str(onnx), config_path=str(cfg))
+            except VoiceNotReady:
+                raise
+            except Exception as exc:
+                raise VoiceNotReady(f"Piper voice could not load: {exc}") from exc
         return self._piper
 
     @property
@@ -106,9 +151,34 @@ class Voice:
         if self._whisper is None:
             from faster_whisper import WhisperModel
 
-            self._whisper = WhisperModel(self._whisper_name, device=self._whisper_device,
-                                         compute_type=self._whisper_compute)
+            try:
+                self._whisper = WhisperModel(self._whisper_name, device=self._whisper_device,
+                                             compute_type=self._whisper_compute)
+            except Exception as exc:
+                raise VoiceNotReady(f"Whisper hearing could not load: {exc}") from exc
         return self._whisper
+
+    def preflight(self) -> dict:
+        """Honest readiness check for mouth and ears — no speech, no mic.
+
+        Returns ``{ok, piper, whisper, error}``. Call this before the ear greets
+        so a missing model becomes a spoken/printed truth, not a silent hang.
+        """
+        out: dict = {"ok": False, "piper": False, "whisper": False, "error": None}
+        errors: list[str] = []
+        try:
+            _ = self.piper
+            out["piper"] = True
+        except Exception as exc:
+            errors.append(str(exc))
+        try:
+            _ = self.whisper
+            out["whisper"] = True
+        except Exception as exc:
+            errors.append(str(exc))
+        out["ok"] = bool(out["piper"] and out["whisper"])
+        out["error"] = "; ".join(errors) if errors else None
+        return out
 
     # --- speak ---------------------------------------------------------------
 
@@ -116,6 +186,8 @@ class Voice:
         out = Path(out_wav) if out_wav else (_voice_dir() / "_last_spoken.wav")
         out.parent.mkdir(parents=True, exist_ok=True)
         spoken = speakable(text)
+        if not spoken.strip():
+            return out
         try:
             from chirox.activity import update_activity
 
@@ -127,8 +199,25 @@ class Voice:
             from piper import SynthesisConfig
 
             syn_config = SynthesisConfig(length_scale=self.pace)
-        with wave.open(str(out), "wb") as wf:
-            self.piper.synthesize_wav(spoken, wf, syn_config=syn_config)
+        try:
+            with wave.open(str(out), "wb") as wf:
+                self.piper.synthesize_wav(spoken, wf, syn_config=syn_config)
+        except VoiceNotReady:
+            try:
+                from chirox.activity import update_activity
+
+                update_activity(piper_active=False)
+            except Exception:
+                pass
+            raise
+        except Exception as exc:
+            try:
+                from chirox.activity import update_activity
+
+                update_activity(piper_active=False)
+            except Exception:
+                pass
+            raise VoiceNotReady(f"Piper could not speak: {exc}") from exc
         if play:
             self._play(out)
             try:
@@ -165,19 +254,34 @@ class Voice:
         return no_speech > self.NO_SPEECH_PROB and logprob < self.LOW_LOGPROB
 
     def transcribe(self, wav: Path, initial_prompt: str | None = None) -> str:
-        """``initial_prompt`` biases Whisper toward expected vocabulary — the ear
-        passes the name "Chirox" so the wake word is not dropped as an unknown.
-        Segments Whisper itself marks as probable non-speech are discarded, so
-        room noise does not become phantom commands."""
-        segments, _info = self.whisper.transcribe(str(wav), initial_prompt=initial_prompt)
+        """Transcribe a local WAV. Live ear keeps ``initial_prompt=None`` so Whisper
+        does not invent the wake word from room noise; self-test may pass a prompt.
+        Segments Whisper marks as probable non-speech are discarded."""
+        try:
+            segments, _info = self.whisper.transcribe(
+                str(wav),
+                initial_prompt=initial_prompt,
+                vad_filter=True,
+                vad_parameters={"min_silence_duration_ms": 400},
+            )
+        except TypeError:
+            # older faster-whisper without vad_filter kwargs
+            segments, _info = self.whisper.transcribe(str(wav), initial_prompt=initial_prompt)
+        except VoiceNotReady:
+            raise
+        except Exception as exc:
+            raise VoiceNotReady(f"Whisper could not hear: {exc}") from exc
         return " ".join(s.text for s in segments if not self._is_hallucinated(s)).strip()
 
     def listen(self, seconds: float = 6.0, samplerate: int = 16000) -> str:
         import sounddevice as sd
         import soundfile as sf
 
-        rec = sd.rec(int(seconds * samplerate), samplerate=samplerate, channels=1)
-        sd.wait()
+        try:
+            rec = sd.rec(int(seconds * samplerate), samplerate=samplerate, channels=1)
+            sd.wait()
+        except Exception as exc:
+            raise VoiceNotReady(f"microphone capture failed: {exc}") from exc
         tmp = _voice_dir() / "_last_heard.wav"
         sf.write(str(tmp), rec, samplerate)
         return self.transcribe(tmp)

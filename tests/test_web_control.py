@@ -92,6 +92,22 @@ def test_frontend_has_command_deck():
     assert "swapBtn" not in text
 
 
+def test_silence_stops_narration_and_stray_organs(monkeypatch):
+    def fake_stop():
+        return True
+
+    monkeypatch.setattr("chirox.narrator.stop_narration", fake_stop)
+    monkeypatch.setattr(control, "list_python_processes",
+                        lambda: [(55, "python -m chirox.trainer"), (56, "python -m chirox.cli")])
+    killed = []
+    monkeypatch.setattr(control, "terminate", lambda pid: killed.append(pid))
+    data = client.post("/api/control/silence").json()
+    assert data["stopped"] is True
+    assert data["narration"] is True
+    assert 55 in killed
+    assert 56 not in killed
+
+
 def test_record_stop_honest_when_nothing_running(monkeypatch):
     monkeypatch.setattr(control, "list_python_processes", lambda: [])
     data = client.post("/api/record/stop").json()

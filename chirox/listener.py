@@ -41,8 +41,10 @@ PANIC_HOTKEY = "ctrl+alt+0"
 WHISPER_PROMPT = "The assistant's name is Chirox. The speaker may say: Chirox, what day is it?"
 
 # Whisper spellings observed/expected for "Chirox" — matched space-insensitively.
+# Live STT uses no wake prompt (avoids hallucination); these aliases catch soft mishears.
 WAKE_ALIASES = [
     "chirox", "chi rox", "kairox", "kai rox", "kyrox", "chirocks",
+    "shirox", "tyrox", "cheerocks", "chi rocks",
 ]
 WAKE_PREFIXES = {"hey", "ok", "okay"}
 
@@ -243,14 +245,17 @@ class SpeechSegmenter:
 
     Calibrates a noise floor from the first ``calib_blocks`` blocks, then opens
     on ``start_blocks`` consecutive loud blocks and closes after ``end_blocks``
-    quiet ones. A short pre-roll keeps word onsets. No model, no magic — the
-    same input always segments the same way.
+    quiet ones. A short pre-roll keeps word onsets. While idle, quiet RMS
+    samples slowly refresh the threshold so HVAC/TV changes do not freeze the
+    gate forever. No neural VAD — the same input always segments the same way
+    for a given threshold path.
     """
 
     def __init__(self, calib_blocks: int = 33, start_blocks: int = 3, end_blocks: int = 25,
                  min_blocks: int = 12, max_blocks: int = 500, pre_roll: int = 8,
                  threshold_ratio: float = 3.5, min_threshold: float = 0.01,
-                 threshold: float | None = None):
+                 threshold: float | None = None,
+                 recalib_quiet_blocks: int = 80, recalib_every_blocks: int = 400):
         self.calib_blocks = calib_blocks
         self.start_blocks = start_blocks
         self.end_blocks = end_blocks
@@ -260,12 +265,17 @@ class SpeechSegmenter:
         self.threshold_ratio = threshold_ratio
         self.min_threshold = min_threshold
         self.threshold = threshold  # preset skips calibration (read-me windows)
+        self.recalib_quiet_blocks = recalib_quiet_blocks
+        self.recalib_every_blocks = recalib_every_blocks
         self._calib: list[float] = []
+        self._quiet_rms: list[float] = []
+        self._blocks_since_recalib = 0
         self._recent: list = []       # pre-roll ring buffer of (block, rms)
         self._active: list = []       # blocks of the in-progress segment
         self._loud_run = 0
         self._quiet_run = 0
         self._in_speech = False
+        self.last_recalibrated = False
 
     def reset(self) -> None:
         """Drop any in-progress speech (used after Chirox talks over the room)."""
@@ -282,6 +292,28 @@ class SpeechSegmenter:
 
         return float(np.sqrt(np.mean(np.square(block, dtype="float64"))))
 
+    def _floor_from(self, samples: list[float]) -> float:
+        return max((sum(samples) / len(samples)) * self.threshold_ratio, self.min_threshold)
+
+    def _maybe_recalibrate(self, rms: float, loud: bool) -> None:
+        """Slowly refresh the noise floor from quiet idle blocks."""
+        self.last_recalibrated = False
+        if self.threshold is None or self._in_speech:
+            return
+        if not loud:
+            self._quiet_rms.append(rms)
+            if len(self._quiet_rms) > self.recalib_quiet_blocks:
+                self._quiet_rms.pop(0)
+        self._blocks_since_recalib += 1
+        if (self._blocks_since_recalib < self.recalib_every_blocks
+                or len(self._quiet_rms) < max(10, self.recalib_quiet_blocks // 2)):
+            return
+        fresh = self._floor_from(self._quiet_rms)
+        # Blend so a door slam does not yank the gate.
+        self.threshold = (0.65 * self.threshold) + (0.35 * fresh)
+        self._blocks_since_recalib = 0
+        self.last_recalibrated = True
+
     def push(self, block):
         """Feed one audio block; returns a finished segment (list of blocks) or None."""
         rms = self._rms(block)
@@ -289,11 +321,11 @@ class SpeechSegmenter:
         if self.threshold is None:
             self._calib.append(rms)
             if len(self._calib) >= self.calib_blocks:
-                floor = sum(self._calib) / len(self._calib)
-                self.threshold = max(floor * self.threshold_ratio, self.min_threshold)
+                self.threshold = self._floor_from(self._calib)
             return None
 
         loud = rms > self.threshold
+        self._maybe_recalibrate(rms, loud)
         if not self._in_speech:
             self._recent.append(block)
             if len(self._recent) > self.pre_roll:
@@ -324,6 +356,9 @@ class ChiroxEar:
 
     SAMPLERATE = 16000
     BLOCK_MS = 30
+    # ~6s of 30ms blocks. While Whisper runs on the main thread the callback
+    # keeps firing — bound the queue and drop the oldest so backlog cannot grow.
+    MAX_QUEUE_BLOCKS = 200
 
     def __init__(self, config=None, device=None, aliases: list[str] | None = None,
                  speak_replies: bool = True):
@@ -336,7 +371,7 @@ class ChiroxEar:
         self._voice = None
         self._narrator = None
         self._stream = None
-        self._queue: queue.Queue = queue.Queue()
+        self._queue: queue.Queue = queue.Queue(maxsize=self.MAX_QUEUE_BLOCKS)
         self._awaiting_until = 0.0   # retained for old sessions; bare wake no longer opens commands
         self._threshold: float | None = None  # room noise floor, once calibrated
         self._reset_segmenter = False
@@ -345,6 +380,7 @@ class ChiroxEar:
         self._witness: LiveExchangeWitness | None = None  # opt-in exchange log
         self._last_answer = ""    # the reply to the command being handled
         self._exchange_done = False  # an addressed exchange completed (for --once)
+        self._overflow_noted = False
         self.running = False
 
     def panic(self) -> None:
@@ -381,7 +417,22 @@ class ChiroxEar:
         return int(self.SAMPLERATE * self.BLOCK_MS / 1000)
 
     def _callback(self, indata, frames, t, status):
-        self._queue.put(indata[:, 0].copy())
+        if status and not self._overflow_noted:
+            # PortAudio overflow/underflow — note once so logs stay readable.
+            print(f"[ear] (audio status: {status})")
+            self._overflow_noted = True
+        block = indata[:, 0].copy()
+        try:
+            self._queue.put_nowait(block)
+        except queue.Full:
+            try:
+                self._queue.get_nowait()  # drop oldest — prefer the present moment
+            except queue.Empty:
+                pass
+            try:
+                self._queue.put_nowait(block)
+            except queue.Full:
+                pass
 
     def _say(self, text: str) -> None:
         """Speak with the mic paused — Chirox must not hear himself."""
@@ -390,16 +441,21 @@ class ChiroxEar:
         if not self.speak_replies:
             return
         if self._stream is not None:
-            self._stream.stop()
+            try:
+                self._stream.stop()
+            except Exception:
+                pass
         try:
             self.voice.speak(text)
         except Exception as exc:  # keep listening even if the mouth fails
             print(f"[ear] (voice playback failed: {exc})")
         finally:
+            self._drain_queue()
             if self._stream is not None:
-                while not self._queue.empty():  # drop anything heard mid-speech
-                    self._queue.get_nowait()
-                self._stream.start()
+                try:
+                    self._stream.start()
+                except Exception as exc:
+                    print(f"[ear] (mic restart failed: {exc})")
             self._reset_segmenter = True
 
     @property
@@ -413,8 +469,11 @@ class ChiroxEar:
     # --- read-me mode -------------------------------------------------------------
 
     def _drain_queue(self) -> None:
-        while not self._queue.empty():
-            self._queue.get_nowait()
+        while True:
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                break
 
     def _play_passage(self, text: str) -> None:
         """Speak one passage in the narrator voice with the mic fully off."""
@@ -428,12 +487,16 @@ class ChiroxEar:
         except Exception as exc:
             print(f"[ear] (narration playback failed: {exc})")
 
-    def _listen_window(self, seconds: float = 2.5, max_extra: float = 6.0) -> str:
+    def _listen_window(self, seconds: float = 4.0, max_extra: float = 8.0) -> str:
         """Between passages: open the mic briefly; return a transcript or ''."""
         if self._stream is None:
             return ""
         self._drain_queue()
-        self._stream.start()
+        try:
+            self._stream.start()
+        except Exception as exc:
+            print(f"[ear] (listen window mic failed: {exc})")
+            return ""
         seg = SpeechSegmenter(threshold=self._threshold or 0.01,
                               start_blocks=2, end_blocks=15, min_blocks=6)
         deadline = time.monotonic() + seconds
@@ -449,7 +512,10 @@ class ChiroxEar:
                     return self._transcribe_segment(segment)
             return ""
         finally:
-            self._stream.stop()
+            try:
+                self._stream.stop()
+            except Exception:
+                pass
 
     def read_me(self, label: str, path, restart: bool = False) -> None:
         """Passage-by-passage reading: deaf during a passage (by design), a short
@@ -584,11 +650,15 @@ class ChiroxEar:
 
             from chirox.config import REPO_ROOT
 
+            from chirox.narrator import claim_narration_lock
+
             self._say("Training call. Stand in front of the camera; I will call the drills.")
             flags = 0x08000000 if _sys.platform == "win32" else 0
             proc = subprocess.Popen([_sys.executable, "-m", "chirox.trainer"], cwd=str(REPO_ROOT),
                                     creationflags=flags, stdout=subprocess.DEVNULL,
                                     stderr=subprocess.DEVNULL)
+            # Claim the shared lock immediately so early "Chirox" echo is ignored.
+            claim_narration_lock(proc.pid)
             print(f"[ear] training session started (pid {proc.pid})")
             return True
         if kind == "reflect":
@@ -673,16 +743,17 @@ class ChiroxEar:
 
     # --- main loop ------------------------------------------------------------------
 
-    def run(self, once: bool = False, witness: "LiveExchangeWitness | None" = None) -> None:
+    def _open_input_stream(self):
         import sounddevice as sd
 
-        self._witness = witness
-        self._exchange_done = False
-        segmenter = SpeechSegmenter()
-        self._stream = sd.InputStream(
+        return sd.InputStream(
             samplerate=self.SAMPLERATE, channels=1, dtype="float32",
             blocksize=self._block_frames(), device=self.device, callback=self._callback,
         )
+
+    def run(self, once: bool = False, witness: "LiveExchangeWitness | None" = None) -> None:
+        self._witness = witness
+        self._exchange_done = False
         self.running = True
         try:
             import keyboard as kb
@@ -692,35 +763,87 @@ class ChiroxEar:
         except Exception as exc:  # hotkey is a convenience, never a blocker
             print(f"[ear] (kill-switch hotkey unavailable: {exc})")
         print(f"[ear] awake — wake word: 'Chirox' (device: {self.device if self.device is not None else 'default'})")
+
+        # Preflight mouth + ears before greeting — honest downtime beats a silent hang.
+        ready = self.voice.preflight()
+        if not ready["ok"]:
+            print(f"[ear] voice not ready: {ready['error']}")
+            if ready["piper"] and not ready["whisper"]:
+                self._say("My hearing is not ready. Check the Whisper model on this machine.")
+            elif ready["whisper"] and not ready["piper"]:
+                print("[ear] Piper is unavailable — cannot speak. Hearing alone is not enough to run.")
+            else:
+                print("[ear] mouth and ears are unavailable — resting.")
+            self.running = False
+            return
+
         print("[ear] calibrating room noise (~1s of quiet, please)…")
-        # Load the models before greeting so the first real exchange is not slow.
-        _ = self.voice.whisper
-        with self._stream:
-            self._say("I am here.")
-            try:
-                while self.running:
-                    block = self._queue.get()
-                    if self._reset_segmenter:
-                        segmenter.reset()
-                        self._reset_segmenter = False
-                        continue
-                    segment = segmenter.push(block)
-                    if segmenter.threshold is not None and segmenter._calib:
-                        segmenter._calib = []
-                        self._threshold = segmenter.threshold
-                        print(f"[ear] noise floor set (threshold {segmenter.threshold:.4f}); listening.")
-                    if segment is None:
-                        continue
-                    text = self._transcribe_segment(segment)
-                    keep_going = self.handle_transcript(text)
-                    # --once proves the loop: keep listening past stray room noise
-                    # until Chirox is actually addressed and answers, then stop.
-                    if once and self._exchange_done:
+        reconnects = 0
+        max_reconnects = 0 if once else 12
+        try:
+            while self.running:
+                segmenter = SpeechSegmenter()
+                self._drain_queue()
+                try:
+                    self._stream = self._open_input_stream()
+                except Exception as exc:
+                    print(f"[ear] microphone could not open: {exc}")
+                    if once or reconnects >= max_reconnects:
                         break
-                    if not keep_going:
+                    reconnects += 1
+                    time.sleep(2.0)
+                    continue
+                try:
+                    with self._stream:
+                        if reconnects == 0:
+                            self._say("I am here.")
+                        else:
+                            print(f"[ear] microphone recovered (attempt {reconnects})")
+                            self._say("I am listening again.")
+                        while self.running:
+                            try:
+                                block = self._queue.get(timeout=1.0)
+                            except queue.Empty:
+                                continue
+                            if self._reset_segmenter:
+                                segmenter.reset()
+                                self._reset_segmenter = False
+                                continue
+                            segment = segmenter.push(block)
+                            if segmenter.threshold is not None and segmenter._calib:
+                                segmenter._calib = []
+                                self._threshold = segmenter.threshold
+                                print(f"[ear] noise floor set (threshold {segmenter.threshold:.4f}); listening.")
+                            if segmenter.last_recalibrated:
+                                self._threshold = segmenter.threshold
+                                print(f"[ear] noise floor refreshed (threshold {segmenter.threshold:.4f})")
+                            if segment is None:
+                                continue
+                            try:
+                                text = self._transcribe_segment(segment)
+                            except Exception as exc:
+                                print(f"[ear] (transcription failed: {exc})")
+                                continue
+                            keep_going = self.handle_transcript(text)
+                            if once and self._exchange_done:
+                                self.running = False
+                                break
+                            if not keep_going:
+                                self.running = False
+                                break
+                except KeyboardInterrupt:
+                    print("\n[ear] interrupted — resting.")
+                    break
+                except Exception as exc:
+                    print(f"[ear] microphone stream lost: {exc}")
+                    if once or reconnects >= max_reconnects:
                         break
-            except KeyboardInterrupt:
-                print("\n[ear] interrupted — resting.")
+                    reconnects += 1
+                    time.sleep(2.0)
+                    continue
+                break
+        finally:
+            self._stream = None
         if self._witness is not None:
             try:
                 path = self._witness.write()
@@ -738,34 +861,58 @@ def self_test(witness: bool = False) -> bool:
     """Prove the loop TTS→STT→wake→route→**answer** with Chirox's own mouth as
     the speaker — the whole chain except the physical mic. With ``witness`` the
     proof is written to an inspectable log, exactly as the live ear writes one.
-    """
-    from chirox.voice import Voice
 
-    v = Voice()
+    Runs two STT passes: with the wake prompt (stable unit proof) and without
+    (matches the live room). PASS requires the prompted path; the unprompted
+    path is reported honestly so drift is visible.
+    """
+    from chirox.voice import Voice, VoiceNotReady
+
+    try:
+        v = Voice()
+        ready = v.preflight()
+    except Exception as exc:
+        print(f"[self-test] FAIL — voice preflight crashed: {exc}")
+        return False
+    if not ready["ok"]:
+        print(f"[self-test] FAIL — voice not ready: {ready['error']}")
+        return False
+
     phrase = "Chirox, what day is it today?"
     print(f'[self-test] speaking to a wav: "{phrase}"')
-    wav = v.speak(phrase, play=False)
-    heard = v.transcribe(wav, initial_prompt=WHISPER_PROMPT)
-    print(f'[self-test] whisper heard:    "{heard}"')
-    woken, command = match_wake(heard)
+    try:
+        wav = v.speak(phrase, play=False)
+    except VoiceNotReady as exc:
+        print(f"[self-test] FAIL — could not speak: {exc}")
+        return False
+
+    heard_prompted = v.transcribe(wav, initial_prompt=WHISPER_PROMPT)
+    heard_live = v.transcribe(wav, initial_prompt=None)
+    print(f'[self-test] whisper (prompted): "{heard_prompted}"')
+    print(f'[self-test] whisper (live path): "{heard_live}"')
+
+    woken, command = match_wake(heard_prompted)
+    woken_live, _ = match_wake(heard_live)
     kind = route(command) if woken else "-"
-    # Prove the answer actually renders — routing alone is not an exchange.
     answer = ""
     if woken and kind == "day":
         try:
             answer = ChiroxEar(speak_replies=False)._answer_day()
         except Exception as exc:
             print(f"[self-test] (day answer failed: {exc})")
-    print(f"[self-test] wake={woken} command={command!r} route={kind}")
+    print(f"[self-test] wake={woken} live_wake={woken_live} command={command!r} route={kind}")
     print(f'[self-test] day answer:       "{answer}"')
+    if woken and not woken_live:
+        print("[self-test] note: live (unprompted) STT missed the wake — room path is harder; aliases help.")
     ok = bool(woken and kind == "day" and answer.strip())
     if witness:
         log = LiveExchangeWitness(device="self-test (no mic)",
                                   whisper_model=v._whisper_name,
                                   samplerate=ChiroxEar.SAMPLERATE,
                                   context="the TTS→STT self-test (Chirox's own mouth, no microphone)")
-        log.record(heard=heard, woken=woken, command=command, route=kind,
-                   answer=answer, spoken=False, note="TTS→STT self-test, no microphone")
+        log.record(heard=heard_prompted, woken=woken, command=command, route=kind,
+                   answer=answer, spoken=False,
+                   note=f"TTS→STT self-test; live_path_wake={woken_live}")
         path = log.write()
         print(f"[self-test] witness written: {path}")
     print(f"[self-test] {'PASS' if ok else 'FAIL'}")

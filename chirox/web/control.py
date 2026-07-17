@@ -167,10 +167,29 @@ def voice_activity() -> dict:
 
 
 def silence() -> dict:
-    """The cockpit's red button: kill any narration or training session."""
+    """The cockpit's red button: kill narration/training and stop local speakers.
+
+    Does not stop the ear process itself — toggle WAKE off (or say
+    "Chirox, go to sleep") for that. Stops whatever is holding the shared
+    narration PID lock and asks PortAudio to abort any in-process playback
+    in this server (short ``speak_text`` replies).
+    """
     from chirox.narrator import stop_narration
 
-    return {"stopped": stop_narration()}
+    stopped = stop_narration()
+    # Also kill stray trainer/narrator processes if the lock was already cleared.
+    extra = 0
+    for pid, cmd in list_python_processes():
+        if "chirox.narrator" in cmd or "chirox.trainer" in cmd:
+            terminate(pid)
+            extra += 1
+    try:
+        import sounddevice as sd
+
+        sd.stop()
+    except Exception:
+        pass
+    return {"stopped": bool(stopped or extra), "narration": stopped, "extra_killed": extra}
 
 
 # --- library ---------------------------------------------------------------------------

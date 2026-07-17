@@ -165,6 +165,32 @@ def test_segmenter_reset_drops_in_progress_speech():
     assert got == []
 
 
+def test_segmenter_recalibrates_noise_floor_while_idle():
+    seg = SpeechSegmenter(
+        calib_blocks=10, start_blocks=3, end_blocks=5, min_blocks=8,
+        recalib_quiet_blocks=20, recalib_every_blocks=25,
+    )
+    _feed(seg, _blocks(0.001, 10))  # initial calibration
+    first = seg.threshold
+    assert first is not None
+    # Quiet room gets a bit louder (HVAC) — idle blocks should refresh the floor.
+    _feed(seg, _blocks(0.004, 40))
+    assert seg.threshold is not None
+    assert seg.threshold > first
+    assert seg._blocks_since_recalib < 25
+
+
+def test_ear_queue_is_bounded():
+    ear = ChiroxEar(speak_replies=False)
+    assert ear._queue.maxsize == ChiroxEar.MAX_QUEUE_BLOCKS
+
+
+def test_wake_aliases_cover_common_soft_mishears():
+    for heard in ["Shirox, what day is it?", "Tyrox train me", "Chi rocks, reflect"]:
+        woken, _ = match_wake(heard)
+        assert woken, heard
+
+
 # --- live-exchange witness (the Gate 2 artifact) -------------------------------------
 
 

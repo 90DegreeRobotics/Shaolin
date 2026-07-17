@@ -19,9 +19,27 @@ function Get-EarProcess {
         Where-Object { $_.CommandLine -like "*chirox.listener*" }
 }
 
+function Get-VoiceOrganProcess {
+    # Narrator / trainer share the PID lock the ear watches — -Stop must kill them too.
+    Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
+        Where-Object {
+            $_.CommandLine -like "*chirox.narrator*" -or
+            $_.CommandLine -like "*chirox.trainer*"
+        }
+}
+
 if ($Stop) {
-    $procs = Get-EarProcess
-    if ($procs) {
+    $organs = @(Get-VoiceOrganProcess)
+    if ($organs.Count -gt 0) {
+        $organs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        Write-Host "Stopped narration/training ($($organs.Count))."
+    }
+    $lock = Join-Path $repo "Dojo\voice\_narration.pid"
+    if (Test-Path -LiteralPath $lock) {
+        Remove-Item -LiteralPath $lock -Force -ErrorAction SilentlyContinue
+    }
+    $procs = @(Get-EarProcess)
+    if ($procs.Count -gt 0) {
         $procs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
         Write-Host "Chirox ear stopped."
     } else {

@@ -8,12 +8,64 @@ from chirox import voice
 
 def test_ensure_piper_returns_existing_without_download(tmp_path, monkeypatch):
     onnx = tmp_path / "v.onnx"
-    onnx.write_bytes(b"model")
+    onnx.write_bytes(b"x" * (voice.PIPER_MIN_ONNX_BYTES + 10))
     cfg = tmp_path / "v.onnx.json"
-    cfg.write_bytes(b"{}")
+    cfg.write_bytes(b'{"ok": true, "sample_rate": 22050}')
     monkeypatch.setattr(voice, "_voice_dir", lambda: tmp_path)
     got_onnx, got_cfg = voice.ensure_piper("v")
     assert got_onnx == onnx and got_cfg == cfg
+
+
+def test_download_once_refuses_truncated_payload(tmp_path, monkeypatch):
+    target = tmp_path / "voice.onnx"
+
+    class _Resp:
+        def read(self):
+            return b"tiny"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(voice.urllib.request, "urlopen", lambda *a, **k: _Resp())
+    try:
+        voice._download_once("http://example.invalid/v.onnx", target, min_bytes=1000)
+        assert False, "expected VoiceNotReady"
+    except voice.VoiceNotReady as exc:
+        assert "too small" in str(exc)
+    assert not target.exists()
+
+
+def test_preflight_reports_missing_mouth_and_ears():
+    class Stub(voice.Voice):
+        @property
+        def piper(self):
+            raise voice.VoiceNotReady("piper down")
+
+        @property
+        def whisper(self):
+            raise voice.VoiceNotReady("whisper down")
+
+    report = Stub().preflight()
+    assert report["ok"] is False
+    assert report["piper"] is False and report["whisper"] is False
+    assert "piper" in report["error"] and "whisper" in report["error"]
+
+
+def test_transcribe_uses_vad_filter_when_supported(tmp_path):
+    seen = {}
+
+    class _Fake:
+        def transcribe(self, wav, initial_prompt=None, **kwargs):
+            seen.update(kwargs)
+            return iter([_Seg(" Chirox")]), None
+
+    v = voice.Voice()
+    v._whisper = _Fake()
+    assert v.transcribe(tmp_path / "x.wav") == "Chirox"
+    assert seen.get("vad_filter") is True
 
 
 def test_speak_produces_a_wav_if_voice_present(tmp_path):

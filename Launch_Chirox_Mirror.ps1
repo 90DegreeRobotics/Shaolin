@@ -71,12 +71,13 @@ if (-not (Test-Path -LiteralPath $edge)) {
 }
 $appProfile = Join-Path $repo "Dojo\data\chirox_browser"
 if (Test-Path -LiteralPath $edge) {
-    # Chirox owns the whole screen: an app window (no address bar) that opens
-    # fullscreen. --start-fullscreen is the borderless F11 state; --start-maximized
-    # is a fallback for builds that ignore it. Press F11 to drop out of fullscreen.
+    # Chirox owns the screen as its own app window (no address bar), opened
+    # MAXIMIZED, not borderless-fullscreen: --start-maximized fills the work area
+    # while keeping the window's minimize/close bar. (--start-fullscreen is the
+    # borderless F11 state and hides those controls, so it is deliberately not used.)
     Start-Process -FilePath $edge -ArgumentList `
         "--app=$url", "--user-data-dir=$appProfile", "--no-first-run", `
-        "--start-fullscreen", "--start-maximized"
+        "--start-maximized"
 } else {
     Start-Process $url
 }

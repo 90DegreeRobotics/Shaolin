@@ -33,6 +33,11 @@ const state = {
   recordDay: null,
   gotFirstFrame: false,
   camLoadTimer: null,
+  holdStartedAt: null,
+  formSeconds: 0,
+  lastFrameAt: null,
+  selectedRecordKey: null,
+  playback: null,
 };
 
 const bones = [
@@ -198,6 +203,63 @@ function drawFrame(view, payload, jpeg) {
   view.image.src = url;
 }
 
+function formatAngleName(name) {
+  return String(name || "").replace(/_/g, " ");
+}
+
+function updateMetricsHud(reading, truthKind) {
+  const angles = $("hudAngles");
+  const form = $("hudForm");
+  const timer = $("hudTimer");
+  if (!angles || !form || !timer) return;
+
+  const now = Date.now();
+  if (!state.holdStartedAt) state.holdStartedAt = now;
+  const elapsed = Math.max(0, Math.floor((now - state.holdStartedAt) / 1000));
+  timer.textContent = `${elapsed}s hold`;
+
+  if (!reading || truthKind === "no-body") {
+    form.textContent = "no body";
+    angles.innerHTML = "";
+    state.lastFrameAt = now;
+    return;
+  }
+
+  const dt = state.lastFrameAt ? Math.min(0.25, (now - state.lastFrameAt) / 1000) : 0;
+  state.lastFrameAt = now;
+  if (truthKind === "measured" && !(reading.flags || []).length) {
+    state.formSeconds += dt;
+  }
+  form.textContent = truthKind === "uncertain"
+    ? "uncertain"
+    : `${Math.floor(state.formSeconds)}s in form`;
+
+  const metrics = reading.metrics || {};
+  const keys = Object.keys(metrics)
+    .filter((k) => typeof metrics[k] === "number" && /angle|deg|knee|hip|spine|back|elbow|shoulder/i.test(k))
+    .slice(0, 4);
+  const fallback = Object.keys(metrics)
+    .filter((k) => typeof metrics[k] === "number")
+    .slice(0, 4);
+  const show = keys.length ? keys : fallback;
+  angles.innerHTML = "";
+  for (const key of show) {
+    const span = document.createElement("span");
+    const val = metrics[key];
+    span.textContent = `${formatAngleName(key)} ${Number(val).toFixed(0)}°`;
+    angles.append(span);
+  }
+}
+
+function resetHoldMetrics() {
+  state.holdStartedAt = Date.now();
+  state.formSeconds = 0;
+  state.lastFrameAt = null;
+  if ($("hudTimer")) $("hudTimer").textContent = "0s hold";
+  if ($("hudForm")) $("hudForm").textContent = "—";
+  if ($("hudAngles")) $("hudAngles").innerHTML = "";
+}
+
 function updateView(role, payload) {
   const view = views[role];
   view.frameCount = payload.frame_index || view.frameCount + 1;
@@ -206,6 +268,7 @@ function updateView(role, payload) {
     view.conf.textContent = "no body";
     view.msg.textContent = "No body detected. Step fully into frame.";
     view.assess.textContent = "";
+    updateMetricsHud(null, "no-body");
     return;
   }
   const reading = payload.reading;
@@ -215,9 +278,11 @@ function updateView(role, payload) {
     view.lastState = "uncertain";
     view.uncertain += 1;
     view.msg.textContent = "Uncertain - reframe before trusting numbers.";
+    updateMetricsHud(reading, "uncertain");
   } else {
     view.lastState = "measured";
     view.msg.textContent = "";
+    updateMetricsHud(reading, "measured");
   }
 }
 
@@ -334,7 +399,7 @@ async function mirrorOn() {
   }
   openSocket("front");
   state.running = true;
-  $("mirrorBtn").classList.add("on");
+  resetHoldMetrics();
   startTimer();
   updateGlobalTruth();
   // If no frame has painted after a while, keep the notice honest rather than
@@ -353,9 +418,9 @@ async function mirrorOff() {
   state.running = false;
   state.gotFirstFrame = false;
   hideCamLoading();
-  $("mirrorBtn").classList.remove("on");
   clearInterval(state.timer);
   ROLES.forEach(resetView);
+  resetHoldMetrics();
   setTruth("no-body", "Idle");
 }
 
@@ -405,6 +470,11 @@ function renderTrainingHall() {
       btn.addEventListener("click", () => {
         showGuide(d.key);
         if (d.kind === "hold") setTrackedStance(d.key, d.label);
+        state.selectedRecordKey = d.key;
+        document.querySelectorAll("#recordList .ex-chip").forEach((c) => {
+          c.classList.toggle("sel", c.dataset.key === d.key);
+        });
+        closeWorkDrawer();
       });
       grid.append(btn);
     }
@@ -444,8 +514,12 @@ function showGuide(key) {
   $("guideName").textContent = drill.label || key;
   $("guideInstruction").textContent = drill.instruction || "Move deliberately and keep the whole body in frame.";
   $("guideKind").textContent = drill.kind === "reps" ? "Counted reps" : "Timed hold";
-  $("guideCamera").textContent = drill.camera_instruction || `Best camera: ${drill.view || "front"}.`;
+  $("guideCamera").textContent = drill.camera_instruction
+    || "Built-in webcam (front). Stand far enough back for head to ankles.";
   $("guideTruth").textContent = drill.guide_image ? drill.guide_image.title : (drill.guide_title || "Measured by Chirox vision.");
+  if ($("trackedStance") && !state.running) {
+    $("trackedStance").textContent = drill.label || key;
+  }
   if (drill.guide_image) selectGuideImage(drill.guide_image);
   document.querySelectorAll(".hall-drill").forEach((b) => {
     b.classList.toggle("sel", b.dataset.key === key);
@@ -468,9 +542,13 @@ async function loadGuides() {
 // The mirror follows the practitioner: any hold picked in the Training Hall
 // becomes the stance the live wireframe measures.
 async function setTrackedStance(key, label) {
-  if (state.stance === key) return;
+  if (state.stance === key) {
+    $("trackedStance").textContent = label || key;
+    return;
+  }
   state.stance = key;
   $("trackedStance").textContent = label || key;
+  resetHoldMetrics();
   if (state.running) {
     await mirrorOff();
     await mirrorOn();
@@ -496,22 +574,62 @@ function openLightbox(index) {
   document.body.classList.add("lightbox-open");
 }
 
-function openVideo(url, title) {
+function showPlaybackTools(show, note = "") {
+  const tools = $("lbPlaybackTools");
+  if (!tools) return;
+  tools.hidden = !show;
+  if ($("lbPlayNote")) $("lbPlayNote").textContent = note || "";
+}
+
+function openVideo(url, title, note = "") {
   const video = $("lbVideo");
   $("lbImage").hidden = true;
   $("lbImage").removeAttribute("src");
   video.hidden = false;
   video.src = url;
-  video.play().catch(() => { /* codec not browser-playable; OPEN still works */ });
+  video.playbackRate = Number(($("lbSpeed") && $("lbSpeed").value) || 1);
+  video.play().catch(() => { /* codec not browser-playable; OPEN / prepare still work */ });
   $("lbTitle").textContent = title;
+  showPlaybackTools(true, note);
   $("lightbox").hidden = false;
   document.body.classList.add("lightbox-open");
+}
+
+async function playRecording(file, title) {
+  const res = await post("/api/recordings/playback", { file });
+  if (!res.ok) {
+    openVideo(`/media/${file}`, title, res.error || "Playback unavailable.");
+    return;
+  }
+  state.playback = { file, title };
+  if (res.proxy_ready) {
+    openVideo(res.url, title, "Browser proxy ready.");
+    return;
+  }
+  openVideo(res.url, title, "Preparing a browser-friendly copy…");
+  const prepared = await post("/api/recordings/prepare", { file });
+  if (prepared.ok && prepared.url) {
+    openVideo(prepared.url, title, "Browser proxy ready.");
+  } else if (prepared.mjpeg_url) {
+    showPlaybackTools(true, prepared.error || "Streaming replay.");
+    $("lbImage").hidden = false;
+    $("lbImage").src = prepared.mjpeg_url;
+    $("lbVideo").hidden = true;
+    $("lbVideo").removeAttribute("src");
+    $("lbTitle").textContent = title;
+    $("lightbox").hidden = false;
+    document.body.classList.add("lightbox-open");
+  } else {
+    showPlaybackTools(true, prepared.error || "Open in the system player if this will not play.");
+  }
 }
 
 function closeLightbox() {
   const video = $("lbVideo");
   video.pause();
   video.removeAttribute("src");
+  showPlaybackTools(false);
+  state.playback = null;
   $("lightbox").hidden = true;
   document.body.classList.remove("lightbox-open");
 }
@@ -545,11 +663,41 @@ function applyMode(mode) {
   document.body.classList.toggle("mode-learning", state.mode === "learning");
   document.body.classList.toggle("mode-training", state.mode !== "learning");
   $("learningDeck").hidden = state.mode !== "learning";
+  if ($("practiceStage")) $("practiceStage").hidden = state.mode === "learning";
   $("trainingModeBtn").classList.toggle("sel", state.mode === "training");
   $("learningModeBtn").classList.toggle("sel", state.mode === "learning");
-  if (state.mode === "learning" && state.running) mirrorOff();
-  if (state.mode === "learning") refreshLearning();
+  if (state.mode === "learning") {
+    closeWorkDrawer();
+    closePracticePanels();
+    if (state.running) mirrorOff();
+    refreshLearning();
+  }
   if (state.mode === "training") maybeAutoMirror();
+}
+
+function openWorkDrawer() {
+  const drawer = $("workDrawer");
+  if (!drawer) return;
+  drawer.hidden = false;
+  $("pickWorkBtn").classList.add("open");
+}
+
+function closeWorkDrawer() {
+  const drawer = $("workDrawer");
+  if (!drawer) return;
+  drawer.hidden = true;
+  if ($("pickWorkBtn")) $("pickWorkBtn").classList.remove("open");
+}
+
+function closePracticePanels() {
+  for (const sid of ["trainStrip", "recordStrip"]) {
+    const el = $(sid);
+    if (el) el.hidden = true;
+  }
+  for (const bid of ["trainBtn", "recordBtn"]) {
+    const el = $(bid);
+    if (el) el.classList.remove("open");
+  }
 }
 
 // Training mode means training: the webcam comes up by itself unless another
@@ -741,15 +889,15 @@ async function refreshMemory() {
   }
 }
 
-// --- toggles -----------------------------------------------------------------------
+// --- practice bar + ear --------------------------------------------------------------
 
-const strips = { trainBtn: "trainStrip", readBtn: "readStrip", recordBtn: "recordStrip", masterBtn: "masterStrip" };
+const strips = { trainBtn: "trainStrip", recordBtn: "recordStrip" };
 
 function toggleStrip(btnId) {
   const strip = $(strips[btnId]);
+  if (!strip) return;
   const nowHidden = !strip.hidden;
-  for (const sid of Object.values(strips)) $(sid).hidden = true;
-  for (const bid of Object.keys(strips)) $(bid).classList.remove("open");
+  closePracticePanels();
   strip.hidden = nowHidden;
   if (!nowHidden) $(btnId).classList.add("open");
 }
@@ -757,7 +905,12 @@ function toggleStrip(btnId) {
 $("trainingModeBtn").addEventListener("click", () => setMode("training"));
 $("learningModeBtn").addEventListener("click", () => setMode("learning"));
 
-$("mirrorBtn").addEventListener("click", () => (state.running ? mirrorOff() : mirrorOn()));
+$("pickWorkBtn").addEventListener("click", () => {
+  const drawer = $("workDrawer");
+  if (drawer.hidden) openWorkDrawer();
+  else closeWorkDrawer();
+});
+$("closeDrawerBtn").addEventListener("click", closeWorkDrawer);
 
 // WAKE: one press brings Ollama up (if it is down) and sets the ear listening.
 $("earBtn").addEventListener("click", async () => {
@@ -783,6 +936,25 @@ $("silenceButton").addEventListener("click", async () => {
   await post("/api/control/silence");
   refreshControl();
 });
+
+if ($("lbBack5")) {
+  $("lbBack5").addEventListener("click", () => {
+    const v = $("lbVideo");
+    if (!v.hidden) v.currentTime = Math.max(0, v.currentTime - 5);
+  });
+}
+if ($("lbFwd5")) {
+  $("lbFwd5").addEventListener("click", () => {
+    const v = $("lbVideo");
+    if (!v.hidden) v.currentTime = Math.min(v.duration || v.currentTime + 5, v.currentTime + 5);
+  });
+}
+if ($("lbSpeed")) {
+  $("lbSpeed").addEventListener("change", () => {
+    const v = $("lbVideo");
+    if (!v.hidden) v.playbackRate = Number($("lbSpeed").value) || 1;
+  });
+}
 
 $("masterAskBtn").addEventListener("click", async () => {
   const q = $("masterQuestion").value.trim();
@@ -816,9 +988,9 @@ $("saveDailyBtn").addEventListener("click", () => saveLearningRecord("daily"));
 $("saveMandarinBtn").addEventListener("click", () => saveLearningRecord("mandarin"));
 
 for (const btnId of Object.keys(strips)) {
-  $(btnId).addEventListener("click", (ev) => {
+  $(btnId).addEventListener("click", () => {
     const btn = $(btnId);
-    // an active organ: clicking its lit toggle stops it instead of opening the strip
+    // an active organ: clicking its lit button stops it instead of opening the panel
     if (btn.classList.contains("on")) {
       if (btnId === "recordBtn") post("/api/record/stop").then(refreshControl);
       else post("/api/control/silence").then(refreshControl);
@@ -838,9 +1010,40 @@ function singleSelect(cls) {
   });
 }
 singleSelect("time-chip");
-singleSelect("ex-chip");
 singleSelect("len-chip");
-singleSelect("cam-chip");
+
+function recordExerciseId(key, kind) {
+  if (kind === "reps") return key;
+  if (key.endsWith("_stance") || key.includes("_")) return key;
+  return `${key}_stance`;
+}
+
+function renderRecordCatalog(drills) {
+  const box = $("recordList");
+  if (!box) return;
+  box.innerHTML = "";
+  if (!state.selectedRecordKey && drills.length) {
+    state.selectedRecordKey = drills[0].key;
+  }
+  for (const d of drills) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip ex-chip";
+    chip.dataset.key = d.key;
+    chip.dataset.ex = recordExerciseId(d.key, d.kind);
+    chip.dataset.stance = d.kind === "hold" ? d.key : "";
+    chip.textContent = d.kind === "reps" ? `${d.label} ×` : d.label;
+    if (d.key === state.selectedRecordKey) chip.classList.add("sel");
+    chip.addEventListener("click", () => {
+      box.querySelectorAll(".ex-chip").forEach((c) => c.classList.remove("sel"));
+      chip.classList.add("sel");
+      state.selectedRecordKey = d.key;
+      showGuide(d.key);
+      if (d.kind === "hold") setTrackedStance(d.key, d.label);
+    });
+    box.append(chip);
+  }
+}
 
 async function loadDrillCatalog() {
   try {
@@ -848,31 +1051,27 @@ async function loadDrillCatalog() {
     const box = $("drillList");
     box.innerHTML = "";
     for (const d of data.drills) {
-      state.guides.drills.set(d.key, d);
+      if (!state.guides.drills.has(d.key)) state.guides.drills.set(d.key, d);
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip drill-chip";
       chip.dataset.key = d.key;
       chip.textContent = d.kind === "reps" ? `${d.label} ×` : d.label;
-      chip.title = `${d.kind === "reps" ? "Counted reps" : "Timed hold"} — best from the ${d.view} camera`;
+      chip.title = d.kind === "reps" ? "Counted reps" : "Timed hold";
       chip.addEventListener("click", () => {
         chip.classList.toggle("sel");
         showGuide(d.key);
+        if (d.kind === "hold") setTrackedStance(d.key, d.label);
       });
       box.append(chip);
     }
+    renderRecordCatalog(data.drills || []);
     showGuide(state.stance);
   } catch (err) {
     $("drillList").textContent = "Catalog unavailable.";
+    if ($("recordList")) $("recordList").textContent = "Catalog unavailable.";
   }
 }
-
-document.querySelectorAll(".ex-chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    const key = chip.dataset.stance || (chip.dataset.ex || "").replace(/_stance$/, "");
-    showGuide(key);
-  });
-});
 
 // --- organ launches ---------------------------------------------------------------
 
@@ -885,40 +1084,34 @@ $("trainGo").addEventListener("click", async () => {
     stances: stances.length ? stances : null, seconds, drills: 3, source: state.sources.front,
   });
   $("trainNote").textContent = res.ok
-    ? "He is calling the drills - listen."
+    ? "He is calling the drills — listen."
     : `Could not start: ${res.error}`;
   refreshControl();
 });
 
 $("recordGo").addEventListener("click", async () => {
   const ex = document.querySelector(".ex-chip.sel");
+  if (!ex) {
+    $("recordNote").textContent = "Pick an exercise from the catalog first.";
+    return;
+  }
   const minutes = Number(document.querySelector(".len-chip.sel").dataset.min);
-  const camRole = "front";
   if (state.running) await mirrorOff();  // the recorder needs the camera
   const res = await post("/api/record/start", {
     exercise: ex.dataset.ex,
-    source: state.sources[camRole],
+    source: state.sources.front,
     seconds: minutes * 60,
     stance: ex.dataset.stance || null,
   });
   $("recordNote").textContent = res.ok
-    ? `Recording ${ex.textContent} for ${minutes} min - train. It seals itself when done.`
+    ? `Recording ${ex.textContent} for ${minutes} min — train. It seals itself when done.`
     : `Could not start: ${res.error}`;
   refreshControl();
 });
 
-$("masterGo").addEventListener("click", async () => {
-  $("masterText").textContent = "The Master is reading the record…";
-  $("masterGo").disabled = true;
-  try {
-    const res = await post("/api/master/debrief", {});
-    $("masterText").textContent = res.text;
-    if (res.ok) await post("/api/say", { text: res.text });
-  } catch (err) {
-    $("masterText").textContent = "The Master could not be reached.";
-  } finally {
-    $("masterGo").disabled = false;
-  }
+$("readBtn").addEventListener("click", () => {
+  refreshLibrary();
+  refreshLearning();
 });
 
 // --- library ------------------------------------------------------------------------
@@ -953,7 +1146,7 @@ async function refreshControl() {
   try {
     const s = await (await fetch("/api/control/status")).json();
     $("earBtn").classList.toggle("on", s.ear.running);
-    $("readBtn").classList.toggle("on", s.voice.active && s.voice.kind === "reading");
+    if ($("readBtn")) $("readBtn").classList.toggle("on", s.voice.active && s.voice.kind === "reading");
     $("trainBtn").classList.toggle("on", s.voice.active && s.voice.kind === "training");
     $("recordBtn").classList.toggle("on", Boolean(s.voice.recording));
     $("sysCodex").textContent = s.codex.ok ? `record intact (${s.codex.events})` : "RECORD BROKEN";
@@ -1016,6 +1209,7 @@ async function refreshRecordings() {
       if (r.date) bits.push(r.date);
       if (r.duration_s) bits.push(`${Math.round(r.duration_s)}s`);
       bits.push(`${r.size_mb} MB`);
+      if (r.proxy_ready) bits.push("browser ready");
       if (!r.sealed) bits.push("not sealed (stopped early)");
       meta.textContent = bits.join(" · ");
       const path = document.createElement("span");
@@ -1027,7 +1221,7 @@ async function refreshRecordings() {
       play.className = "chip";
       play.textContent = "PLAY";
       play.title = "Play here in the cockpit";
-      play.addEventListener("click", () => openVideo(r.url, `${name.textContent} — ${meta.textContent}`));
+      play.addEventListener("click", () => playRecording(r.file, `${name.textContent} — ${meta.textContent}`));
       const open = document.createElement("button");
       open.type = "button";
       open.className = "chip";

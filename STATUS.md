@@ -135,52 +135,27 @@ model; and two capabilities remain honestly gated on physical hardware.
     the developer surface; the practitioner's surfaces are the deck and the voice.
   - `web/` - a local-only mode cockpit (FastAPI on `127.0.0.1:8765`, opened as its
     own app window by the desktop **Chirox** shortcut - no address bar, its own
-    browser profile). **Launch + camera legibility (2026-07-16):** the shortcut now
-    opens **fullscreen** (`--start-fullscreen`; F11 to drop out), and the mirror
-    shows a **"Waking the camera…" overlay** (spinner + honest text) the moment
-    MIRROR starts, clearing on the first painted frame and turning into the real
-    reason if the camera fails to open. The persistent Edge profile means CSS/JS
-    are cache-busted by an explicit `?v=` query that MUST be bumped on every
-    change (it was the reason a fresh wireframe could look unchanged on launch;
-    now at `v=10`). **Training Mode** is the
-    current primary practice surface: one built-in-webcam mirror, wireframe overlay,
-    reference exercise guide, deterministic stance metrics, and explicit Measured /
-    Uncertain / No-body truth states. **Head and neck (2026-07-16):** the cockpit
-    wireframe now draws a head — an open circle riding the midpoint of the ears,
-    sized from the ear span (falling back to shoulder width when the head is
-    turned) — joined by a neck line to the shoulder midpoint, so the mirror shows
-    a whole practitioner instead of a headless figure. Head landmarks (nose + both
-    ears) are overlay-only: they never touch the deterministic stance geometry,
-    which still reads its own 12-joint map. Verified 2026-07-16 by driving the
-    overlay with a synthetic full-body pose: an open head ring and a continuous
-    neck render above the shoulders where nothing was drawn before. **The Training Hall (2026-07-06):** the full
-    24-drill catalog lives ON the page (grouped: stances/balance, legs, floor/core,
-    qigong), each drill mapped by eye to its OWN chart among the practitioner's ten
-    posters (real printed titles, never "Reference N"); all ten charts sit on a
-    shelf and open in a fullscreen lightbox (arrow/ESC navigation) — reference
-    images at human scale, not thumbnails. The webcam mirror auto-starts in
-    Training Mode (skipped while the trainer or recorder holds the camera;
-    ?autostart=0 disables). **WAKE (2026-07-06):** one button starts Ollama if it
-    is down (spawns `ollama serve`, waits up to 15s, reports honestly if absent)
-    and sets the ear listening; Ollama state is part of /api/control/status.
-    **Recording made legible (2026-07-06):** the mirror is labeled "nothing is
-    saved" and shows which hold it is tracking; picking ANY of the 19 holds in
-    the Training Hall retargets the live wireframe (the backend always could —
-    the UI had hardcoded three chips). A recording marker file makes "am I
-    being recorded?" answerable: a red pulsing RECORDING banner with the
-    exercise name, live elapsed time, and a STOP button; stopping keeps the
-    video and honestly marks it "not sealed (stopped early)". A Recordings
-    panel lists every video in `Dojo/media` (date, day, duration, size, sealed
-    state, path) with PLAY in the cockpit (new recordings try H.264 so the
-    browser can decode them; old mp4v files may need) OPEN in the system
-    player, and OPEN FOLDER. When a recording ends the mirror comes back by
-    itself. Full cycle verified live: start → banner + elapsed → STOP → file
-    in the archive → mirror auto-restored. **Learning Mode** is the study surface:
-    conversation with Master Chirox, Piper/Whisper activity, read-along library,
-    Mandarin focus, and a day-by-day Dojo Record editor that seals new versions
-    instead of silently rewriting history. The previous multi-camera control deck
-    remains a measured experiment, not the default practitioner path.
-- `tests/` - 234 passing unit tests as of `python -m pytest` on 2026-07-16.
+    browser profile). **Launch + camera legibility (2026-07-16):** the shortcut
+    opens **maximized** (`--start-maximized`) so the window keeps its minimize /
+    close bar, and the mirror shows a **"Waking the camera…" overlay** (spinner +
+    honest text) until the first painted frame (or the real failure reason). CSS/JS
+    are cache-busted by `?v=` (now at `v=11`). **Wireguy Practice Stage (2026-07-16):**
+    Training Mode is a mirror-first composition — Wireguy (full-body wireframe
+    including head and neck) owns the stage with an on-canvas HUD (Measured /
+    Uncertain / No-body, hold timer, in-form seconds, key angles). The top bar
+    keeps only mode tabs plus **WAKE** / **SILENCE**; practice actions are
+    **CALL ME**, **RECORD**, and **PICK WORK** (Training Hall, ten charts, and
+    recordings live in a drawer, not a permanent control deck). One drill catalog
+    drives Hall, CALL ME, and RECORD. Browser playback can prepare an H.264 proxy
+    or fall back to MJPEG streaming without altering evidence files. **Head and
+    neck (2026-07-16):** head circle from ear midpoint + neck to shoulders —
+    overlay-only, never part of stance geometry. **Trainer voice (2026-07-16):**
+    geometry corrections stay deterministic; sparse honest encouragement lines
+    speak only on clean in-form streaks, with randomized callout gaps; auto-chosen
+    drill sets keep neglect weighting and shuffle order. **Learning Mode** is the
+    study surface (Master chat, Piper/Whisper, library, Mandarin, Dojo Record) with
+    no training chrome. Multicam remains a measured experiment, not the default path.
+- `tests/` - 240 passing unit tests as of `python -m pytest tests` on 2026-07-16.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

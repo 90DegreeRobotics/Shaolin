@@ -30,7 +30,7 @@ p {
   margin: 0;
 }
 
-/* --- top bar: brand + the toggle row ------------------------------------- */
+/* --- top bar: brand + mode + ear ----------------------------------------- */
 
 .topbar {
   display: flex;
@@ -50,6 +50,14 @@ p {
 #standing {
   color: var(--muted);
   font-size: 12px;
+}
+
+.ear-cluster {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .toggles {
@@ -201,100 +209,209 @@ p {
   white-space: pre-wrap;
 }
 
-/* --- current exercise guide --------------------------------------------------- */
+/* --- practice stage: Wireguy owns the first screen -------------------------- */
 
-.guide-band {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(340px, 560px);
-  gap: 12px;
-  align-items: stretch;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
-  background: #131719;
+body.mode-learning .practice-stage,
+body.mode-learning .work-drawer {
+  display: none;
 }
 
-.guide-main {
-  min-width: 0;
+.practice-stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 14px 0;
+}
+
+.practice-stage .cam-box {
+  flex: 1;
+  min-height: clamp(480px, 68vh, 860px);
+  border: 1px solid var(--line);
+  background: #080909;
+  overflow: hidden;
+}
+
+.practice-stage .cam-box canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stage-hud {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  max-width: min(520px, 92%);
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
-.guide-main h2 {
-  margin: 0;
+.stage-hud .truth {
+  align-self: flex-start;
+  min-width: 110px;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.hud-drill strong {
+  display: block;
   font-size: 22px;
   line-height: 1.15;
-  letter-spacing: 0;
 }
 
-.guide-main p {
-  max-width: 760px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.45;
+.hud-track {
+  color: var(--green);
+  font-size: 12px;
+  letter-spacing: 0.5px;
 }
 
-.guide-meta {
+.hud-metrics {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.guide-meta span {
+.hud-metric {
   min-height: 28px;
-  padding: 6px 9px;
-  border: 1px solid var(--line);
+  padding: 5px 9px;
+  border: 1px solid rgba(52, 64, 71, 0.9);
   border-radius: 4px;
-  background: var(--panel-2);
+  background: rgba(13, 17, 18, 0.72);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-angles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hud-angles span {
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(13, 17, 18, 0.7);
   color: var(--muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.guide-image-wrap {
-  position: relative;
-  min-height: 260px;
-  max-height: 420px;
-  border: 1px solid var(--line);
-  background: #080909;
-  overflow: hidden;
-  cursor: zoom-in;
+.hud-line,
+.stage-hud .cam-msg,
+.stage-hud .cam-assess {
+  position: static;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d7e4df;
+  font-size: 13px;
+  line-height: 1.35;
+  max-width: 46ch;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
-.guide-image-wrap img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-height: 420px;
-  object-fit: contain;
-}
-
-.guide-image-wrap img[src=""] {
-  visibility: hidden;
-}
-
-.guide-image-wrap .zoom-hint {
+.mirror-seal {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 3px 8px;
+  right: 12px;
+  bottom: 12px;
+  padding: 4px 8px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #cfe8d8;
-  font-size: 10px;
-  letter-spacing: 1px;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #9ca9a8;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.practice-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 2px 10px;
+}
+
+.practice-action {
+  min-width: 120px;
+}
+
+.practice-action.open,
+.practice-action.on {
+  border-color: var(--green);
+  box-shadow: 0 0 10px rgba(66, 211, 146, 0.28);
+}
+
+.practice-panel {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+/* --- Pick Work drawer ------------------------------------------------------- */
+
+.work-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  width: min(520px, 100vw);
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: #121618;
+  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.45);
+  padding-bottom: 40px;
+}
+
+.work-drawer[hidden] {
+  display: none;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #15191b;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.lb-playback-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.lb-playback-tools select {
+  margin-left: 4px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
 }
 
 /* --- the Training Hall: every drill, every chart, human-sized ----------------- */
 
-body.mode-learning .hall {
-  display: none;
-}
-
 .hall {
   padding: 14px 16px 20px;
-  border-top: 1px solid var(--line);
   background: #131719;
 }
 
@@ -474,10 +591,6 @@ body.mode-learning .hall {
   color: var(--green);
 }
 
-body.mode-learning .recordings {
-  display: none;
-}
-
 .recordings {
   padding: 12px 16px;
   border-top: 1px solid var(--line);
@@ -624,15 +737,6 @@ body.lightbox-open {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 12px 16px;
-}
-
-.mirror-stage {
-  width: min(100%, 1180px);
-  margin: 0 auto;
-}
-
-.mirror-stage .cam-box:not(#frontBox) {
-  display: none;
 }
 
 .cam-box {
@@ -841,10 +945,7 @@ body.mode-learning .mode-tabs {
   background: #e9efed;
 }
 
-body.mode-learning .guide-band,
-body.mode-learning .mirror-stage,
-body.mode-learning .deck-foot,
-body.mode-learning .strip {
+body.mode-learning .deck-foot .note:first-child {
   display: none;
 }
 
@@ -1066,10 +1167,6 @@ body.mode-learning .learning-deck {
 }
 
 @media (max-width: 1100px) {
-  .guide-band {
-    grid-template-columns: 1fr;
-  }
-
   .cams {
     grid-template-columns: 1fr;
   }
@@ -1078,8 +1175,17 @@ body.mode-learning .learning-deck {
     grid-template-columns: 1fr;
   }
 
+  .ear-cluster,
   .toggles {
     justify-content: flex-start;
+  }
+
+  .practice-stage .cam-box {
+    min-height: clamp(360px, 55vh, 700px);
+  }
+
+  .work-drawer {
+    width: 100vw;
   }
 
   .learning-deck {

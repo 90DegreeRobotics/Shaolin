@@ -76,11 +76,11 @@ QIGONG_KEYS = {"arms_raised", "seated_meditation"}
 GUIDE_COPY = {
     "stance": {
         "title": "Stance Work Reference",
-        "instruction": "Set the body into the shape, root the feet, and hold still enough for Chirox to measure clean angles.",
+        "instruction": "Set the body into the shape, root the feet, and hold still enough for Wireguy to measure clean angles.",
     },
     "floor": {
         "title": "Floor Strength Reference",
-        "instruction": "Use the side camera. Keep the whole body in frame so shoulders, hips, knees, ankles, elbows, and wrists stay visible.",
+        "instruction": "Keep the whole body in the built-in webcam frame so shoulders, hips, knees, ankles, elbows, and wrists stay visible.",
     },
     "leg_strength": {
         "title": "Leg Strength Reference",
@@ -88,11 +88,11 @@ GUIDE_COPY = {
     },
     "qigong": {
         "title": "Qigong / Mobility Reference",
-        "instruction": "Move deliberately and keep the joints visible. Chirox tracks the shape, not performance theater.",
+        "instruction": "Move deliberately and keep the joints visible. Wireguy tracks the shape, not performance theater.",
     },
     "general": {
         "title": "Training Reference",
-        "instruction": "Stand where both cameras can see you. If Chirox marks uncertainty, fix framing before trusting the verdict.",
+        "instruction": "Stand far enough back for head to ankles in the webcam. If Chirox marks uncertainty, fix framing before trusting the verdict.",
     },
 }
 
@@ -155,7 +155,7 @@ def drill_guides() -> dict:
             "guide_kind": kind,
             "guide_title": copy["title"],
             "instruction": copy["instruction"],
-            "camera_instruction": f"Best camera: {drill.get('view', 'front')}.",
+            "camera_instruction": "Built-in webcam (front). Stand far enough back for head to ankles.",
             "guide_image": image,
         })
     return {"references": refs, "drills": drills}

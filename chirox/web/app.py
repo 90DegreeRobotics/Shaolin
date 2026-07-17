@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -324,11 +324,39 @@ class OpenRecordingRequest(BaseModel):
     file: str
 
 
+class PlaybackRequest(BaseModel):
+    file: str
+
+
 @app.post("/api/recordings/open")
 def recordings_open(req: OpenRecordingRequest):
     from chirox.web import control
 
     return control.open_recording(req.file)
+
+
+@app.post("/api/recordings/playback")
+def recordings_playback(req: PlaybackRequest):
+    from chirox.web import control
+
+    return control.playback_recording(req.file)
+
+
+@app.post("/api/recordings/prepare")
+def recordings_prepare(req: PlaybackRequest):
+    from chirox.web import control
+
+    return control.prepare_playback(req.file)
+
+
+@app.get("/api/recordings/mjpeg")
+def recordings_mjpeg(file: str):
+    from chirox.web import control
+
+    stream = control.mjpeg_recording(file)
+    if stream is None:
+        raise HTTPException(status_code=404, detail="no such recording")
+    return StreamingResponse(stream, media_type="multipart/x-mixed-replace; boundary=frame")
 
 
 @app.post("/api/recordings/folder")

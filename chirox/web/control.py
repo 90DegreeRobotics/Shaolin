@@ -12,10 +12,13 @@ Local-only, same as the rest of the cockpit: 127.0.0.1.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
@@ -286,12 +289,168 @@ def start_recording(exercise: str, source: str, seconds: int, stance: str | None
     return {"ok": True, "exercise": safe, "pid": pid, "seconds": seconds}
 
 
+def _recording_target(file: str) -> Path | None:
+    from chirox.config import MEDIA_DIR
+
+    if not file or Path(file).is_absolute():
+        return None
+    root = MEDIA_DIR.resolve()
+    target = (root / file).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None
+    if not target.exists() or not target.is_file():
+        return None
+    return target
+
+
+def _media_url(path: Path) -> str:
+    from chirox.config import MEDIA_DIR
+
+    rel = path.resolve().relative_to(MEDIA_DIR.resolve())
+    return "/media/" + quote(str(rel).replace("\\", "/"), safe="/")
+
+
+def _mjpeg_url(file: str) -> str:
+    return "/api/recordings/mjpeg?file=" + quote(file, safe="")
+
+
+def _playback_proxy_path(target: Path) -> Path:
+    from chirox.config import MEDIA_DIR
+
+    digest = hashlib.sha1(str(target.resolve()).encode("utf-8")).hexdigest()[:12]
+    safe_stem = "".join(c if c.isalnum() or c in "_-" else "_" for c in target.stem)[:80]
+    return MEDIA_DIR / "_playback" / f"{safe_stem}.{digest}.browser.mp4"
+
+
+def _cached_playback_proxy(target: Path) -> Path | None:
+    proxy = _playback_proxy_path(target)
+    try:
+        if proxy.exists() and proxy.stat().st_size > 0 and proxy.stat().st_mtime >= target.stat().st_mtime:
+            return proxy
+    except OSError:
+        return None
+    return None
+
+
+def playback_recording(file: str) -> dict:
+    """Return the fastest browser URL for a recording without doing heavy work."""
+    target = _recording_target(file)
+    if target is None:
+        return {"ok": False, "error": "no such recording"}
+    proxy = _cached_playback_proxy(target)
+    return {
+        "ok": True,
+        "file": file,
+        "url": _media_url(proxy or target),
+        "original_url": _media_url(target),
+        "proxy_ready": proxy is not None,
+        "can_prepare": shutil.which("ffmpeg") is not None,
+    }
+
+
+def prepare_playback(file: str) -> dict:
+    """Make a browser-playable H.264 proxy without changing the evidence file."""
+    target = _recording_target(file)
+    if target is None:
+        return {"ok": False, "error": "no such recording"}
+    cached = _cached_playback_proxy(target)
+    if cached is not None:
+        return {"ok": True, "url": _media_url(cached), "proxy_ready": True, "cached": True}
+
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        return {
+            "ok": False,
+            "url": _media_url(target),
+            "mjpeg_url": _mjpeg_url(file),
+            "proxy_ready": False,
+            "error": "Using streaming replay because ffmpeg is not available.",
+        }
+
+    proxy = _playback_proxy_path(target)
+    proxy.parent.mkdir(parents=True, exist_ok=True)
+    tmp = proxy.with_suffix(".tmp.mp4")
+    try:
+        if tmp.exists():
+            tmp.unlink()
+    except OSError:
+        pass
+
+    cmd = [
+        ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(target),
+        "-map", "0:v:0",
+        "-an",
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        str(tmp),
+    ]
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=240, creationflags=_NO_WINDOW)
+    except Exception as exc:
+        return {
+            "ok": False, "url": _media_url(target), "mjpeg_url": _mjpeg_url(file),
+            "proxy_ready": False, "error": str(exc),
+        }
+    if done.returncode != 0 or not tmp.exists() or tmp.stat().st_size == 0:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        error = (done.stderr or done.stdout or "ffmpeg could not prepare this recording").strip()
+        return {
+            "ok": False, "url": _media_url(target), "mjpeg_url": _mjpeg_url(file),
+            "proxy_ready": False, "error": error[-300:],
+        }
+    tmp.replace(proxy)
+    return {"ok": True, "url": _media_url(proxy), "proxy_ready": True, "cached": False}
+
+
+def mjpeg_recording(file: str):
+    """Stream a recording as MJPEG for browsers that reject the MP4 codec."""
+    target = _recording_target(file)
+    if target is None:
+        return None
+
+    def frames():
+        import time
+
+        import cv2
+
+        cap = cv2.VideoCapture(str(target))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 20
+        delay = min(0.1, max(0.025, 1 / fps))
+        try:
+            while cap.isOpened():
+                ok, frame = cap.read()
+                if not ok or frame is None:
+                    break
+                encoded, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
+                if encoded:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n"
+                        b"Cache-Control: no-cache\r\n\r\n" +
+                        buf.tobytes() +
+                        b"\r\n"
+                    )
+                time.sleep(delay)
+        finally:
+            cap.release()
+
+    return frames()
+
+
 def list_recordings(limit: int = 30) -> dict:
     """Every training video in the archive, newest first — sealed manifests
     joined to the files so the practitioner sees date, day, duration, size,
     and exactly where the file lives."""
-    from urllib.parse import quote
-
     from chirox.config import CODEX_PATH, MEDIA_DIR
     from chirox.record.codex import Codex
 
@@ -308,11 +467,16 @@ def list_recordings(limit: int = 30) -> dict:
     if MEDIA_DIR.exists():
         for f in MEDIA_DIR.rglob("*.mp4"):
             rel = f.relative_to(MEDIA_DIR)
+            if rel.parts and rel.parts[0] == "_playback":
+                continue
             m = manifests.get(str(f.resolve()))
             stat = f.stat()
+            proxy = _cached_playback_proxy(f)
             items.append({
                 "file": str(rel).replace("\\", "/"),
-                "url": "/media/" + quote(str(rel).replace("\\", "/")),
+                "url": _media_url(f),
+                "play_url": _media_url(proxy or f),
+                "proxy_ready": proxy is not None,
                 "exercise": m.get("exercise") if m else rel.parts[0] if len(rel.parts) > 1 else "unknown",
                 "date": m.get("date") if m else None,
                 "day_number": m.get("day_number") if m else None,
@@ -330,10 +494,8 @@ def open_recording(file: str) -> dict:
     whatever codec the writer used."""
     import os
 
-    from chirox.config import MEDIA_DIR
-
-    target = (MEDIA_DIR / file).resolve()
-    if not str(target).startswith(str(MEDIA_DIR.resolve())) or not target.exists():
+    target = _recording_target(file)
+    if target is None:
         return {"ok": False, "error": "no such recording"}
     if sys.platform == "win32":
         os.startfile(str(target))  # noqa: S606 — local operator opening his own file

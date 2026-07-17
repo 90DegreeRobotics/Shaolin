@@ -1,6 +1,11 @@
 """Trainer + crane stance + speech scrub — all pure, no camera, no audio."""
 
-from chirox.trainer import choose_plan, drill_summary, spoken_result
+import random
+
+from chirox.trainer import (
+    ENCOURAGEMENTS, callout_gap, choose_plan, drill_summary, pick_encouragement,
+    spoken_result,
+)
 from chirox.vision.stances import (
     LEFT_ANKLE, LEFT_HIP, LEFT_KNEE,
     RIGHT_ANKLE, RIGHT_HIP, RIGHT_KNEE,
@@ -111,6 +116,26 @@ def test_choose_plan_prefers_least_practiced():
 def test_choose_plan_ties_break_deterministically():
     plan = choose_plan(["horse", "bow", "crane"], {}, n=3)
     assert [d["key"] for d in plan] == ["bow", "crane", "horse"]
+
+
+def test_choose_plan_shuffle_keeps_the_same_set():
+    keys = {"horse", "bow", "crane"}
+    plan = choose_plan(["horse", "bow", "crane"], {}, n=3, shuffle=True,
+                       rng=random.Random(7))
+    assert {d["key"] for d in plan} == keys
+    assert len(plan) == 3
+
+
+def test_encouragement_bank_is_honest_and_nonempty():
+    assert len(ENCOURAGEMENTS) >= 5
+    line = pick_encouragement(random.Random(1))
+    assert line in ENCOURAGEMENTS
+    assert "perfect form" not in line.lower()
+
+
+def test_callout_gap_stays_near_base():
+    gap = callout_gap(10.0, random.Random(3))
+    assert 7.5 <= gap <= 13.5
 
 
 # --- drill summary & spoken result -----------------------------------------------------

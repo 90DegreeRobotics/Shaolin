@@ -25,6 +25,7 @@ Run it:  chirox train                (default plan)
 from __future__ import annotations
 
 import os
+import random
 import time
 from datetime import datetime, timezone
 
@@ -35,6 +36,22 @@ DEFAULT_SECONDS = 60
 DEFAULT_REPS = 10
 GRACE_S = 6.0            # settle-in time after the announcement, not judged
 CORRECTION_GAP_S = 7.0   # minimum silence between spoken corrections
+ENCOURAGE_GAP_S = 14.0   # do not cheer constantly — sparse, like a living teacher
+IN_FORM_STREAK_S = 8.0   # earn encouragement by holding clean form this long
+
+# Honest encouragement only — never claims a bad hold is correct. Spoken when
+# the geometry already says the shape is clean.
+ENCOURAGEMENTS = (
+    "Root. The body remembers.",
+    "Breathe. Stay with the shape.",
+    "Change your body. The day is the training.",
+    "Stillness is also practice.",
+    "Hold what you can hold honestly.",
+    "The mirror does not flatter. Neither do I. Keep going.",
+    "Sink. Life is the master. Meet it in the legs.",
+    "Good. Not perfect — present.",
+    "Return to the shape. That is the path.",
+)
 
 # The rotation Chirox draws from when choosing for you: a real session mix —
 # stances, conditioning holds, and counted reps, all from the reference charts.
@@ -70,20 +87,38 @@ def _iso_now() -> str:
 
 def choose_plan(available: list[str], history_counts: dict[str, int],
                 n: int = 3, seconds: int = DEFAULT_SECONDS,
-                reps: int = DEFAULT_REPS) -> list[dict]:
+                reps: int = DEFAULT_REPS, shuffle: bool = False,
+                rng: random.Random | None = None) -> list[dict]:
     """Least-practiced first: Chirox calls what the Record says you neglect.
 
-    Deterministic: ties break alphabetically, no randomness to argue with.
+    Selection is deterministic (ties break alphabetically). When ``shuffle`` is
+    true, the chosen drills are reordered so the session feels alive without
+    abandoning the neglect-weighted set.
     Returns drill dicts: {kind: hold|reps, key, seconds|target}.
     """
     ranked = sorted(available, key=lambda s: (history_counts.get(s, 0), s))
+    selected = list(ranked[:n])
+    if shuffle and len(selected) > 1:
+        (rng or random.Random()).shuffle(selected)
     plan = []
-    for key in ranked[:n]:
+    for key in selected:
         if key in REP_CATALOG:
             plan.append({"kind": "reps", "key": key, "target": reps})
         else:
             plan.append({"kind": "hold", "key": key, "seconds": seconds})
     return plan
+
+
+def pick_encouragement(rng: random.Random | None = None) -> str:
+    """One honest line from the bank — never a form verdict."""
+    bag = rng or random.Random()
+    return bag.choice(ENCOURAGEMENTS)
+
+
+def callout_gap(base: float, rng: random.Random | None = None) -> float:
+    """Sparse random timing so callouts do not land on a metronome."""
+    bag = rng or random.Random()
+    return base * bag.uniform(0.75, 1.35)
 
 
 def drill_summary(samples: list[tuple[float, object]], duration_s: float) -> dict:
@@ -146,10 +181,11 @@ def history_counts(codex) -> dict[str, int]:
 
 
 class Trainer:
-    def __init__(self, source=0, speak: bool = True):
+    def __init__(self, source=0, speak: bool = True, rng: random.Random | None = None):
         self.source = source
         self.speak_enabled = speak
         self._voice = None
+        self._rng = rng or random.Random()
 
     def _say(self, text: str) -> None:
         print(f"[train] {text}")
@@ -164,7 +200,7 @@ class Trainer:
         except Exception as exc:
             print(f"[train] (voice unavailable: {exc})")
 
-    def run(self, plan: list[tuple[str, int]], seal: bool = True) -> dict:
+    def run(self, plan: list[dict], seal: bool = True) -> dict:
         import cv2
 
         from chirox.narrator import _lock_path
@@ -196,7 +232,10 @@ class Trainer:
                 self._say(f"{label}. {seconds} seconds. Begin.")
 
                 samples: list[tuple[float, object]] = []
-                last_correction = 0.0
+                last_callout = 0.0
+                next_gap = callout_gap(CORRECTION_GAP_S, self._rng)
+                in_form_streak = 0.0
+                last_sample_t = None
                 t0 = time.perf_counter()
                 while True:
                     elapsed = time.perf_counter() - t0
@@ -208,14 +247,32 @@ class Trainer:
                     self._clock_ms += 33
                     lm = tracker.detect(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), self._clock_ms)
                     if lm is None or elapsed < GRACE_S:
+                        in_form_streak = 0.0
+                        last_sample_t = elapsed
                         continue
                     reading = evaluator(points_from_landmarks(lm))
                     samples.append((elapsed, reading))
-                    # speak the evaluator's own words, but do not nag
-                    if (reading.flags and not reading.uncertain
-                            and elapsed - last_correction >= CORRECTION_GAP_S):
+                    dt = (elapsed - last_sample_t) if last_sample_t is not None else 0.0
+                    last_sample_t = elapsed
+                    if reading.uncertain or reading.flags:
+                        in_form_streak = 0.0
+                    else:
+                        in_form_streak += max(0.0, dt)
+
+                    if elapsed - last_callout < next_gap:
+                        continue
+                    # Geometry corrections first; honest encouragement only on clean form.
+                    if reading.flags and not reading.uncertain:
                         self._say(reading.assessment)
-                        last_correction = time.perf_counter() - t0
+                        last_callout = elapsed
+                        next_gap = callout_gap(CORRECTION_GAP_S, self._rng)
+                    elif (not reading.uncertain and not reading.flags
+                          and in_form_streak >= IN_FORM_STREAK_S
+                          and elapsed - last_callout >= callout_gap(ENCOURAGE_GAP_S, self._rng)):
+                        self._say(pick_encouragement(self._rng))
+                        last_callout = elapsed
+                        next_gap = callout_gap(ENCOURAGE_GAP_S, self._rng)
+                        in_form_streak = 0.0
 
                 summary = drill_summary(samples, seconds)
                 summary["stance"] = key
@@ -311,7 +368,9 @@ def run_training(source=0, stances: list[str] | None = None,
         from chirox.record.codex import Codex
 
         counts = history_counts(Codex(CODEX_PATH))
-        plan = choose_plan(DEFAULT_ROTATION, counts, n=n, seconds=seconds, reps=reps)
+        # Shuffle only the chosen set — neglect weighting stays; order feels alive.
+        plan = choose_plan(DEFAULT_ROTATION, counts, n=n, seconds=seconds,
+                           reps=reps, shuffle=True)
     return Trainer(source=source, speak=speak).run(plan, seal=seal)
 
 

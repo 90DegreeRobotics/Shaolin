@@ -30,7 +30,7 @@ def test_static_frontend_served():
     assert "frontCanvas" in text
     assert "sideCanvas" not in text
     assert "extraCanvas" not in text
-    assert "Live Mirror" in text
+    assert "Wireguy" in text or "practiceStage" in text
     assert "guideName" in text
     assert "guideImage" in text
     assert "learningDeck" in text
@@ -38,19 +38,19 @@ def test_static_frontend_served():
     assert "dailyForm" in text
     assert "mandarinForm" in text
     assert "learningBooks" in text
-    # the toggle row — one page runs everything, no terminal
-    for toggle in ("mirrorBtn", "earBtn", "trainBtn", "readBtn",
-                   "recordBtn", "masterBtn", "silenceButton"):
-        assert toggle in text, toggle
-    # the Training Hall: the full catalog and all ten charts live ON the page,
-    # with a fullscreen viewer — reference images are for humans, not thumbnails
+    # practice stage — Wireguy owns the first screen; ear stays in the top bar
+    for element in ("practiceStage", "earBtn", "silenceButton", "trainBtn",
+                    "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME"):
+        assert element in text, element
+    # the Training Hall lives in Pick Work, with a fullscreen viewer
     for element in ("trainingHall", "hallGroups", "chartShelf",
-                    "lightbox", "lbImage", "WAKE"):
+                    "lightbox", "lbImage", "lbPlaybackTools"):
         assert element in text, element
     # recording is never a mystery: banner with STOP, archive with playback,
     # and the mirror says plainly that it saves nothing
     for element in ("recBanner", "recStopBtn", "recordingsCard", "recordingsList",
-                    "openFolderBtn", "lbVideo", "trackedStance", "nothing is saved"):
+                    "openFolderBtn", "lbVideo", "trackedStance", "nothing is saved",
+                    "hudAngles", "truthState"):
         assert element in text, element
     # the browser must never show a stale cockpit after an update
     assert response.headers["cache-control"] == "no-cache, must-revalidate"
@@ -85,8 +85,9 @@ def test_recordings_endpoint_lists_archive():
     assert data["ok"] is True
     assert "folder" in data and "items" in data
     for item in data["items"]:
-        assert {"file", "url", "exercise", "size_mb", "sealed"} <= item.keys()
+        assert {"file", "url", "play_url", "proxy_ready", "exercise", "size_mb", "sealed"} <= item.keys()
         assert item["url"].startswith("/media/")
+        assert item["play_url"].startswith("/media/")
 
 
 def test_open_recording_refuses_paths_outside_the_archive():
@@ -94,6 +95,51 @@ def test_open_recording_refuses_paths_outside_the_archive():
 
     res = open_recording("../../Dojo/data/dojo_record.jsonl")
     assert res["ok"] is False
+
+
+def test_playback_refuses_paths_outside_the_archive():
+    from chirox.web.control import playback_recording, prepare_playback
+
+    assert playback_recording("../../Dojo/data/dojo_record.jsonl")["ok"] is False
+    assert prepare_playback("../../Dojo/data/dojo_record.jsonl")["ok"] is False
+
+
+def test_playback_prefers_cached_browser_proxy(tmp_path, monkeypatch):
+    import os
+
+    from chirox import config
+    from chirox.web import control
+
+    monkeypatch.setattr(config, "MEDIA_DIR", tmp_path)
+    clip = tmp_path / "horse_stance" / "clip.mp4"
+    clip.parent.mkdir(parents=True)
+    clip.write_bytes(b"original mp4")
+    proxy = control._playback_proxy_path(clip)
+    proxy.parent.mkdir(parents=True)
+    proxy.write_bytes(b"browser mp4")
+    newer = clip.stat().st_mtime + 10
+    os.utime(proxy, (newer, newer))
+
+    res = control.playback_recording("horse_stance/clip.mp4")
+    assert res["ok"] is True
+    assert res["proxy_ready"] is True
+    assert "/media/_playback/" in res["url"]
+
+
+def test_prepare_playback_offers_streaming_replay_without_ffmpeg(tmp_path, monkeypatch):
+    from chirox import config
+    from chirox.web import control
+
+    monkeypatch.setattr(config, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(control.shutil, "which", lambda _name: None)
+    clip = tmp_path / "free_training" / "clip.mp4"
+    clip.parent.mkdir(parents=True)
+    clip.write_bytes(b"original mp4")
+
+    res = control.prepare_playback("free_training/clip.mp4")
+    assert res["ok"] is False
+    assert res["mjpeg_url"].startswith("/api/recordings/mjpeg?file=free_training%2Fclip.mp4")
+    assert "streaming replay" in res["error"]
 
 
 def test_recording_status_false_without_marker(tmp_path, monkeypatch):
@@ -126,7 +172,7 @@ def test_guides_endpoint_serves_catalog_and_references():
     horse = next(d for d in data["drills"] if d["key"] == "horse")
     assert horse["guide_kind"] == "stance"
     assert horse["instruction"]
-    assert horse["camera_instruction"].startswith("Best camera:")
+    assert "webcam" in horse["camera_instruction"].lower()
     if data["references"]:
         assert data["references"][0]["url"].startswith("/reference/")
 

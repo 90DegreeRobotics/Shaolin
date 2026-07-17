@@ -292,6 +292,29 @@ def test_landmarks_payload_tracks_head_and_neck():
     assert {"left_shoulder", "right_shoulder"} <= names
 
 
+def test_landmarks_payload_tracks_hands_and_feet():
+    # The full-body wireguy carries every articulated joint — hands (thumb /
+    # index / pinky) and feet (heel + toe), both sides — so nothing the
+    # practitioner moves goes untracked.
+    class Lm:
+        x = 0.4
+        y = 0.3
+        visibility = 0.9
+
+    names = {p["name"] for p in landmarks_payload([Lm() for _ in range(33)])}
+    hands = {"left_thumb", "left_index", "left_pinky", "right_thumb", "right_index", "right_pinky"}
+    feet = {"left_heel", "left_foot_index", "right_heel", "right_foot_index"}
+    assert hands <= names
+    assert feet <= names
+
+
+def test_shipped_app_js_reads_head_turn():
+    client = TestClient(app)
+    js = client.get("/static/app.js").text
+    assert "drawHeadOrientation" in js   # the mirror shows when/how far the head turns
+    assert "head turn" in js             # the degree readout
+
+
 def test_pack_frame_round_trips_header_and_jpeg():
     meta = {"type": "frame", "role": "front", "state": "measured", "landmarks": []}
     jpeg = b"\xff\xd8\xff\xe0fake-jpeg-bytes\xff\xd9"

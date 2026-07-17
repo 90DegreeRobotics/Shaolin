@@ -41,18 +41,37 @@ const state = {
 };
 
 const bones = [
+  // torso
   ["left_shoulder", "right_shoulder"],
   ["left_hip", "right_hip"],
+  ["left_shoulder", "left_hip"],
+  ["right_shoulder", "right_hip"],
+  // arms
   ["left_shoulder", "left_elbow"],
   ["left_elbow", "left_wrist"],
   ["right_shoulder", "right_elbow"],
   ["right_elbow", "right_wrist"],
-  ["left_shoulder", "left_hip"],
-  ["right_shoulder", "right_hip"],
+  // hands (wrist out to the thumb / index / pinky knuckles)
+  ["left_wrist", "left_thumb"],
+  ["left_wrist", "left_index"],
+  ["left_wrist", "left_pinky"],
+  ["left_index", "left_pinky"],
+  ["right_wrist", "right_thumb"],
+  ["right_wrist", "right_index"],
+  ["right_wrist", "right_pinky"],
+  ["right_index", "right_pinky"],
+  // legs
   ["left_hip", "left_knee"],
   ["left_knee", "left_ankle"],
   ["right_hip", "right_knee"],
   ["right_knee", "right_ankle"],
+  // feet (ankle -> heel -> toe, a closed little foot)
+  ["left_ankle", "left_heel"],
+  ["left_heel", "left_foot_index"],
+  ["left_ankle", "left_foot_index"],
+  ["right_ankle", "right_heel"],
+  ["right_heel", "right_foot_index"],
+  ["right_ankle", "right_foot_index"],
 ];
 
 async function post(url, body) {
@@ -143,6 +162,76 @@ function drawHeadAndNeck(ctx, canvas, landmarks, stroke) {
   ctx.stroke();
 }
 
+// Head orientation from the face landmarks. Yaw (turn left/right) is the nose's
+// horizontal offset from the ear midpoint, scaled by the ear span so it holds as
+// the practitioner moves nearer or further from the camera. Worked in canvas
+// space (the mirror flip is already applied), so "right" is the way the on-screen
+// head turns — what the practitioner watches themselves do. Returns null when the
+// face cannot be read. Overlay-only; never touches the measured stance geometry.
+function headOrientation(canvas, landmarks) {
+  const nose = pointOf(landmarks, "nose");
+  const le = pointOf(landmarks, "left_ear");
+  const re = pointOf(landmarks, "right_ear");
+  if (!nose || !le || !re) return null;
+  const pn = toCanvasPoint(canvas, nose);
+  const pl = toCanvasPoint(canvas, le);
+  const pr = toCanvasPoint(canvas, re);
+  const earMid = { x: (pl.x + pr.x) / 2, y: (pl.y + pr.y) / 2 };
+  const earSpan = Math.hypot(pr.x - pl.x, pr.y - pl.y) || 1;
+  const yaw = Math.max(-90, Math.min(90, ((pn.x - earMid.x) / (earSpan / 2)) * 50));
+  const conf = Math.min(nose.visibility, le.visibility, re.visibility);
+  return { yaw, conf, earMid, earSpan };
+}
+
+// Draw the head-turn feedback: an arrow off the skull the way the head faces
+// (longer the harder the turn) and a degree readout above the head, so the
+// practitioner sees WHEN the head turns and by HOW MUCH. A distinct tint keeps it
+// legible against the green bones.
+function drawHeadOrientation(ctx, canvas, landmarks) {
+  const o = headOrientation(canvas, landmarks);
+  if (!o || o.conf < 0.3) return;
+  const tint = "130, 200, 255";
+  const alpha = Math.max(0.4, o.conf * state.opacity);
+  const deg = Math.round(Math.abs(o.yaw));
+  const turned = deg > 6;
+
+  if (turned) {
+    const dir = o.yaw > 0 ? 1 : -1;
+    const arrow = o.earSpan * 0.4 + (Math.min(deg, 90) / 90) * o.earSpan * 1.6;
+    const x0 = o.earMid.x;
+    const y0 = o.earMid.y;
+    const x1 = x0 + dir * arrow;
+    ctx.strokeStyle = `rgba(${tint}, ${alpha})`;
+    ctx.lineWidth = Math.max(2, canvas.width / 300);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y0);
+    ctx.stroke();
+    const ah = Math.max(5, canvas.width / 120);
+    ctx.beginPath();
+    ctx.moveTo(x1, y0);
+    ctx.lineTo(x1 - dir * ah, y0 - ah * 0.7);
+    ctx.moveTo(x1, y0);
+    ctx.lineTo(x1 - dir * ah, y0 + ah * 0.7);
+    ctx.stroke();
+  }
+
+  const label = turned ? `head turn ${deg}° ${o.yaw > 0 ? "right" : "left"}` : "head • forward";
+  const fontPx = Math.max(12, Math.round(canvas.width / 42));
+  ctx.font = `600 ${fontPx}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  // Sit above the head, but never let a high/close head push the readout off-frame.
+  const ty = Math.max(fontPx + 4, o.earMid.y - o.earSpan * 1.2 - fontPx * 0.3);
+  ctx.lineWidth = Math.max(3, fontPx / 5);
+  ctx.strokeStyle = "rgba(6, 12, 20, 0.85)";
+  ctx.strokeText(label, o.earMid.x, ty);
+  ctx.fillStyle = `rgba(${tint}, ${Math.max(0.75, alpha)})`;
+  ctx.fillText(label, o.earMid.x, ty);
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
 function drawSkeleton(view, landmarks, reading) {
   if (!landmarks.length) return;
   const canvas = view.canvas;
@@ -163,6 +252,7 @@ function drawSkeleton(view, landmarks, reading) {
     ctx.stroke();
   }
   drawHeadAndNeck(ctx, canvas, landmarks, stroke);
+  drawHeadOrientation(ctx, canvas, landmarks);
   for (const lm of landmarks) {
     if (HEAD_POINTS.has(lm.name)) continue; // the head is a circle, not three face dots
     const p = toCanvasPoint(canvas, lm);

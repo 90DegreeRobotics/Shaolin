@@ -14,10 +14,13 @@ from chirox.vision.multicam import CameraRegistry
 from chirox.vision.pipeline import points_from_landmarks
 from chirox.vision.stances import STANCES
 
-# Landmarks the cockpit wireframe DRAWS. Head points (nose + both ears) are
-# here so the mirror shows a head and neck that follow the practitioner; they
-# are overlay-only and never reach the deterministic stance geometry, which
-# reads its own 12-joint map in ``vision/pipeline.points_from_landmarks``.
+# Landmarks the cockpit wireframe DRAWS: the full articulated skeleton. Head
+# points (nose + both ears) let the mirror draw a head, a neck, and read head
+# turn; the arms run down to the hands (thumb / index / pinky knuckles) and the
+# legs down to the feet (heel + toe) so every joint the practitioner moves is
+# tracked. All of it is overlay-only and never reaches the deterministic stance
+# geometry, which keeps its own 12-joint map in
+# ``vision/pipeline.points_from_landmarks``.
 POSE_INDEX = {
     0: "nose",
     7: "left_ear",
@@ -28,12 +31,22 @@ POSE_INDEX = {
     14: "right_elbow",
     15: "left_wrist",
     16: "right_wrist",
+    17: "left_pinky",
+    18: "right_pinky",
+    19: "left_index",
+    20: "right_index",
+    21: "left_thumb",
+    22: "right_thumb",
     23: "left_hip",
     24: "right_hip",
     25: "left_knee",
     26: "right_knee",
     27: "left_ankle",
     28: "right_ankle",
+    29: "left_heel",
+    30: "right_heel",
+    31: "left_foot_index",
+    32: "right_foot_index",
 }
 
 

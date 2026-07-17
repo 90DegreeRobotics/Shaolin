@@ -66,6 +66,13 @@ def test_route_mode_switches():
     assert route("mirror mode") == "mode_training"
 
 
+def test_route_eight_brocades_routine():
+    assert route("eight brocades") == "routine_brocades"
+    assert route("ba duan jin please") == "routine_brocades"
+    assert route("next phase") == "routine_next"
+    assert route("end routine") == "routine_stop"
+
+
 def test_route_everything_else_to_master():
     assert route("how deep should my horse stance be") == "master"
 

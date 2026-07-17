@@ -275,6 +275,27 @@ body.mode-learning .work-drawer {
   letter-spacing: 0.5px;
 }
 
+.hud-phase {
+  padding: 5px 9px;
+  border: 1px solid rgba(52, 64, 71, 0.9);
+  border-radius: 4px;
+  background: rgba(13, 17, 18, 0.72);
+  color: var(--text);
+  font-size: 13px;
+  max-width: 46ch;
+}
+
+.practice-action.danger-lite {
+  border-color: rgba(240, 107, 99, 0.65);
+  color: #ffd0cc;
+}
+
+.routines {
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  background: #131719;
+}
+
 .hud-metrics {
   display: flex;
   flex-wrap: wrap;

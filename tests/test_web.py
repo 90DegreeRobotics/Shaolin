@@ -40,7 +40,9 @@ def test_static_frontend_served():
     assert "learningBooks" in text
     # practice stage — Wireguy owns the first screen; ear stays in the top bar
     for element in ("practiceStage", "earBtn", "silenceButton", "trainBtn",
-                    "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME"):
+                   "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME",
+                   "routinesCard", "routineList", "hudPhase", "routineNextBtn",
+                   "routineStopBtn"):
         assert element in text, element
     # the Training Hall lives in Pick Work, with a fullscreen viewer
     for element in ("trainingHall", "hallGroups", "chartShelf",
@@ -161,6 +163,22 @@ def test_recording_status_ignores_dead_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(control, "_recording_marker", lambda: marker)
     assert control.recording_status()["recording"] is False
     assert not marker.exists()  # a stale marker is cleaned up, not trusted
+
+
+def test_routine_catalog_and_start_next_stop_without_seal():
+    client = TestClient(app)
+    catalog = client.get("/api/routine/catalog").json()
+    assert any(r["key"] == "eight_brocades_ste" for r in catalog["routines"])
+    started = client.post("/api/routine/start", json={"routine_key": "eight_brocades_ste"}).json()
+    assert started.get("ok") is True
+    assert started["phase_key"] == "bdj_open"
+    nxt = client.post("/api/routine/next").json()
+    assert nxt["phase_key"] == "bdj_support_heaven"
+    stopped = client.post("/api/routine/stop", json={"seal": False}).json()
+    assert stopped["ok"] is True
+    assert stopped["sealed"] is False
+    assert stopped["summary"]["totals"]["phases_completed"] >= 2
+    assert client.get("/api/routine/status").json()["active"] is False
 
 
 def test_guides_endpoint_serves_catalog_and_references():

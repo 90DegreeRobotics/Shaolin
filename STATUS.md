@@ -149,12 +149,24 @@ model; and two capabilities remain honestly gated on physical hardware.
     drives Hall, CALL ME, and RECORD. Browser playback can prepare an H.264 proxy
     or fall back to MJPEG streaming without altering evidence files. **Head and
     neck (2026-07-16):** head circle from ear midpoint + neck to shoulders —
-    overlay-only, never part of stance geometry. **Trainer voice (2026-07-16):**
+    overlay-only, never part of stance geometry. **Full-body Wireguy overlay
+    (2026-07-16):** hands (wrists + knuckles) and feet (ankles + heels + toes)
+    draw on the mirror for presence; stance geometry still uses the 12-joint
+    map. **Forever Routine Tracker (2026-07-16):** hybrid recognition — you name
+    the sequence (PICK WORK → Named Routines, or voice *"eight brocades"*),
+    Wireguy runs a phase state machine for Shaolin Temple Europe Ba Duan Jin
+    (`eight_brocades_ste` in `vision/sequences.py`), counts holds/reps/heel
+    clicks with UNCERTAIN pause, and **END & SEAL** writes a forever
+    `routine_session` Codex entry (`totals.phases` + `phase_log`). Form quality
+    is not graded from video; YouTube is teacher reference only. Voice also
+    understands *"next phase"* / *"end routine"*. Free-train still tags
+    `free_training` until a named routine is active. **Trainer voice (2026-07-16):**
     geometry corrections stay deterministic; sparse honest encouragement lines
     speak only on clean in-form streaks, with randomized callout gaps; auto-chosen
     drill sets keep neglect weighting and shuffle order. **Learning Mode** is the
     study surface (Master chat, Piper/Whisper, library, Mandarin, Dojo Record) with
     no training chrome. Multicam remains a measured experiment, not the default path.
+    CSS/JS cache bust is `?v=13`.
 - **Voice pipeline hardening (2026-07-16):** Piper download uses timeout +
     atomic write and refuses truncated files; `Voice.preflight()` reports honest
     mouth/ear readiness before the ear greets; the mic queue is bounded (drop-
@@ -164,7 +176,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     `Launch_Chirox_Voice.ps1 -Stop` also kill narrator/trainer organs; self-test
     reports both prompted and live-path (unprompted) STT wake results. Gate 2
     (live mic witness) remains open.
-- `tests/` - 249 passing unit tests as of `python -m pytest tests` on 2026-07-16.
+- `tests/` - 262 passing unit tests as of `python -m pytest tests` on 2026-07-16.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

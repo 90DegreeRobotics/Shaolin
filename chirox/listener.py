@@ -55,6 +55,12 @@ _REFLECT_HINTS = ["reflect", "look back", "how have i grown", "how far have i co
 _TRAIN_HINTS = ["train me", "call the training", "start training", "training call", "lets train", "let us train"]
 _TRAINING_MODE_HINTS = ["training mode", "mirror mode", "body mode"]
 _LEARNING_MODE_HINTS = ["learning mode", "study mode", "reading mode"]
+_BROCADE_HINTS = [
+    "eight brocades", "ba duan jin", "baduanjin", "brocades",
+    "start eight brocades", "begin eight brocades", "start the brocades",
+]
+_ROUTINE_NEXT_HINTS = ["next phase", "next brocade", "next movement", "next exercise"]
+_ROUTINE_STOP_HINTS = ["end routine", "seal the routine", "finish brocades", "stop brocades", "seal routine"]
 
 
 def _normalize(text: str) -> str:
@@ -86,7 +92,7 @@ def match_wake(text: str, aliases: list[str] | None = None) -> tuple[bool, str]:
 
 
 def route(command: str) -> str:
-    """Classify a spoken command: 'sleep' | 'day' | 'reflect' | 'read' | 'master'. Pure, testable."""
+    """Classify a spoken command. Pure, testable."""
     norm = _normalize(command)
     if any(p in norm for p in _SLEEP_PHRASES):
         return "sleep"
@@ -96,6 +102,12 @@ def route(command: str) -> str:
         return "mode_training"
     if any(p in norm for p in _LEARNING_MODE_HINTS):
         return "mode_learning"
+    if any(p in norm for p in _ROUTINE_STOP_HINTS):
+        return "routine_stop"
+    if any(p in norm for p in _ROUTINE_NEXT_HINTS):
+        return "routine_next"
+    if any(p in norm for p in _BROCADE_HINTS):
+        return "routine_brocades"
     if any(p in norm for p in _TRAIN_HINTS):
         return "train"
     if any(p in norm for p in _REFLECT_HINTS):
@@ -581,6 +593,25 @@ class ChiroxEar:
         d = dojo_day(self.config.practice_start_date)
         return d.headline()
 
+    def _cockpit_post(self, path: str, body: dict | None = None) -> dict:
+        """Talk to the local mirror API. Honest failure if the cockpit is down."""
+        import json
+        import urllib.error
+        import urllib.request
+
+        url = f"http://127.0.0.1:8765{path}"
+        data = json.dumps(body or {}).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"}, method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.URLError as exc:
+            return {"ok": False, "error": f"mirror not reachable ({exc.reason})"}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
     def _converse_and_speak(self, question: str, reflect: bool = False) -> None:
         """Conversation with the Master: streamed sentence by sentence, so speech
         begins with his first sentence, not after his last. The mic stays paused
@@ -660,6 +691,33 @@ class ChiroxEar:
             # Claim the shared lock immediately so early "Chirox" echo is ignored.
             claim_narration_lock(proc.pid)
             print(f"[ear] training session started (pid {proc.pid})")
+            return True
+        if kind == "routine_brocades":
+            res = self._cockpit_post("/api/routine/start", {"routine_key": "eight_brocades_ste"})
+            if res.get("ok") is False and res.get("error"):
+                self._say(f"Could not start the brocades. {res['error']}. Open the Chirox mirror first.")
+            else:
+                self._say("Eight Brocades. Follow Wireguy. Say next phase, or end routine to seal the log.")
+            return True
+        if kind == "routine_next":
+            res = self._cockpit_post("/api/routine/next", {})
+            if res.get("ok") is False:
+                self._say("No routine is active. Say Chirox, Eight Brocades to begin.")
+            else:
+                self._say(res.get("phase_label") or "next phase")
+            return True
+        if kind == "routine_stop":
+            res = self._cockpit_post("/api/routine/stop", {
+                "routine_key": "eight_brocades_ste", "seal": True, "source": "0",
+            })
+            if res.get("ok") and res.get("sealed"):
+                totals = (res.get("summary") or {}).get("totals") or {}
+                self._say(
+                    f"Routine sealed. {totals.get('phases_completed', 0)} phases, "
+                    f"{totals.get('reps_total', 0)} reps. Forever in the record."
+                )
+            else:
+                self._say(res.get("error") or "No routine was active to seal.")
             return True
         if kind == "reflect":
             self._converse_and_speak(command, reflect=True)

@@ -38,6 +38,7 @@ const state = {
   lastFrameAt: null,
   selectedRecordKey: null,
   playback: null,
+  routineActive: false,
 };
 
 const bones = [
@@ -397,10 +398,47 @@ function updateGlobalTruth() {
   else setTruth("no-body", "Connecting");
 }
 
+function updateRoutineHud(payload) {
+  const phaseEl = $("hudPhase");
+  const repsEl = $("hudReps");
+  const nextBtn = $("routineNextBtn");
+  const stopBtn = $("routineStopBtn");
+  const routine = payload && payload.routine;
+  if (routine && routine.phase_label) {
+    const idx = (routine.phase_index || 0) + 1;
+    const total = routine.phase_count || "?";
+    phaseEl.textContent = `${routine.label || "Routine"} · ${idx}/${total}: ${routine.phase_label}`;
+    if (routine.target_reps != null) {
+      repsEl.textContent = `reps ${routine.reps || 0}/${routine.target_reps}`;
+    } else {
+      repsEl.textContent = `hold ${routine.hold_s || 0}s`;
+    }
+    if (nextBtn) nextBtn.hidden = false;
+    if (stopBtn) stopBtn.hidden = false;
+    state.routineActive = true;
+  } else {
+    const tag = payload && payload.free_tag;
+    if (tag && tag.label) {
+      phaseEl.textContent = tag.form_clean
+        ? `Free train · ${tag.label}`
+        : `Free train · ${tag.label} (flags)`;
+    } else if (!state.routineActive) {
+      phaseEl.textContent = "No routine — free train or begin Eight Brocades.";
+    }
+    if (!routine) {
+      if (nextBtn) nextBtn.hidden = true;
+      if (stopBtn) stopBtn.hidden = true;
+      state.routineActive = false;
+      if (repsEl) repsEl.textContent = "reps —";
+    }
+  }
+}
+
 function renderPayload(role, payload, jpeg) {
   noteFirstFrame();  // a real frame is painting: the camera is up
   drawFrame(views[role], payload, jpeg);
   updateView(role, payload);
+  updateRoutineHud(payload);
   updateGlobalTruth();
 }
 
@@ -1135,6 +1173,39 @@ function renderRecordCatalog(drills) {
   }
 }
 
+async function loadRoutineCatalog() {
+  const box = $("routineList");
+  if (!box) return;
+  try {
+    const data = await (await fetch("/api/routine/catalog")).json();
+    box.innerHTML = "";
+    for (const r of data.routines || []) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip go";
+      chip.textContent = `BEGIN · ${r.label}`;
+      chip.title = r.source_note || r.label;
+      chip.addEventListener("click", async () => {
+        const res = await post("/api/routine/start", { routine_key: r.key });
+        if (!res.ok && res.error) {
+          alert(res.error);
+          return;
+        }
+        state.routineActive = true;
+        $("hudPhase").textContent = `${r.label} · starting…`;
+        $("routineNextBtn").hidden = false;
+        $("routineStopBtn").hidden = false;
+        closeWorkDrawer();
+        if (!state.running) await maybeAutoMirror();
+      });
+      box.append(chip);
+    }
+    if (!box.children.length) box.textContent = "No named routines yet.";
+  } catch (err) {
+    box.textContent = "Routines unavailable.";
+  }
+}
+
 async function loadDrillCatalog() {
   try {
     const data = await (await fetch("/api/train/catalog")).json();
@@ -1161,6 +1232,34 @@ async function loadDrillCatalog() {
     $("drillList").textContent = "Catalog unavailable.";
     if ($("recordList")) $("recordList").textContent = "Catalog unavailable.";
   }
+}
+
+if ($("routineNextBtn")) {
+  $("routineNextBtn").addEventListener("click", async () => {
+    const res = await post("/api/routine/next", {});
+    if (res.phase_label) {
+      $("hudPhase").textContent = `${res.label} · ${res.phase_index + 1}/${res.phase_count}: ${res.phase_label}`;
+    }
+  });
+}
+if ($("routineStopBtn")) {
+  $("routineStopBtn").addEventListener("click", async () => {
+    const res = await post("/api/routine/stop", {
+      routine_key: "eight_brocades_ste",
+      seal: true,
+      source: state.sources.front,
+    });
+    state.routineActive = false;
+    $("routineNextBtn").hidden = true;
+    $("routineStopBtn").hidden = true;
+    if (res.ok && res.sealed) {
+      const t = (res.summary && res.summary.totals) || {};
+      $("hudPhase").textContent = `Sealed forever · ${t.phases_completed || 0} phases · ${t.reps_total || 0} reps`;
+      refreshTimeline();
+    } else if (res.error) {
+      $("hudPhase").textContent = res.error;
+    }
+  });
 }
 
 // --- organ launches ---------------------------------------------------------------
@@ -1382,6 +1481,7 @@ refreshTimeline();
 refreshRecordings();
 loadGuides();
 loadDrillCatalog();
+loadRoutineCatalog();
 setInterval(refreshControl, 5000);
 setInterval(() => { if (state.mode === "learning") refreshLearning(); }, 2500);
 setInterval(refreshTimeline, 30000);

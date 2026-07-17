@@ -115,10 +115,11 @@ def camera_health(source: int | str) -> dict[str, Any]:
 
 
 class LiveSession:
-    def __init__(self, config: SessionConfig):
+    def __init__(self, config: SessionConfig, manager: "LiveSessionManager | None" = None):
         if config.stance not in STANCES:
             raise ValueError(f"unknown stance '{config.stance}'")
         self.config = config
+        self._manager = manager
         self._stop = False
         self._cap = None
         self._tracker = None
@@ -158,7 +159,8 @@ class LiveSession:
                     break
 
                 frame_index += 1
-                elapsed_ms = int((time.perf_counter() - t0) * 1000)
+                elapsed_s = time.perf_counter() - t0
+                elapsed_ms = int(elapsed_s * 1000)
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 lm = self._tracker.detect(rgb, elapsed_ms)
 
@@ -174,6 +176,8 @@ class LiveSession:
                     "landmarks": [],
                     "reading": None,
                     "state": "no_body",
+                    "routine": None,
+                    "free_tag": None,
                 }
 
                 if lm:
@@ -182,6 +186,10 @@ class LiveSession:
                     meta["landmarks"] = landmarks_payload(lm)
                     meta["reading"] = serialize_reading(reading)
                     meta["state"] = "uncertain" if reading.uncertain else "measured"
+                    if self._manager is not None:
+                        meta["routine"] = self._manager.push_routine(pts, elapsed_s)
+                        if meta["routine"] is None:
+                            meta["free_tag"] = self._manager.free_tag(pts)
 
                 yield pack_frame(meta, encoded.tobytes())
                 await asyncio.sleep(0)
@@ -194,6 +202,8 @@ class LiveSessionManager:
         self._lock = Lock()
         self._sessions: dict[str, LiveSession] = {}
         self._configs: dict[str, SessionConfig] = {"front": SessionConfig(role="front")}
+        self._routine = None  # SequenceTracker | None
+        self._routine_t0 = 0.0
 
     @property
     def config(self) -> SessionConfig:
@@ -216,8 +226,58 @@ class LiveSessionManager:
                     role=role,
                 )
             self._configs[role] = config
-            self._sessions[role] = LiveSession(config)
+            self._sessions[role] = LiveSession(config, manager=self)
             return {"active": True, "role": role, "config": asdict(config)}
+
+    # --- named routines (Eight Brocades etc.) --------------------------------
+
+    def start_routine(self, routine_key: str) -> dict[str, Any]:
+        from chirox.vision.sequences import make_tracker
+
+        with self._lock:
+            self._routine = make_tracker(routine_key)
+            self._routine_t0 = time.perf_counter()
+            return {"ok": True, **self._routine.status()}
+
+    def next_routine_phase(self) -> dict[str, Any]:
+        with self._lock:
+            if self._routine is None:
+                return {"ok": False, "error": "no routine active"}
+            t = time.perf_counter() - self._routine_t0
+            return {"ok": True, **self._routine.next_phase(t)}
+
+    def stop_routine(self, seal: bool = True, source: str = "0") -> dict[str, Any]:
+        from chirox.vision.sequences import seal_routine_session
+
+        with self._lock:
+            if self._routine is None:
+                return {"ok": False, "error": "no routine active"}
+            t = time.perf_counter() - self._routine_t0
+            summary = self._routine.stop(t)
+            self._routine = None
+        if seal:
+            sealed = seal_routine_session(summary, source=source)
+            return {"ok": True, "sealed": True, "summary": summary, "event": sealed}
+        return {"ok": True, "sealed": False, "summary": summary}
+
+    def routine_status(self) -> dict[str, Any]:
+        with self._lock:
+            if self._routine is None:
+                return {"active": False}
+            return {"active": True, **self._routine.status()}
+
+    def push_routine(self, points, elapsed_s: float) -> dict[str, Any] | None:
+        with self._lock:
+            if self._routine is None:
+                return None
+            return self._routine.push(points, elapsed_s)
+
+    def free_tag(self, points) -> dict[str, Any] | None:
+        if self._routine is not None:
+            return None
+        from chirox.vision.sequences import free_train_tag
+
+        return free_train_tag(points)
 
     def start_dual(self, front: SessionConfig, side: SessionConfig) -> dict[str, Any]:
         started = [
@@ -265,7 +325,7 @@ class LiveSessionManager:
         with self._lock:
             if role not in self._sessions:
                 config = self._configs.get(role, SessionConfig(role=role))
-                self._sessions[role] = LiveSession(config)
+                self._sessions[role] = LiveSession(config, manager=self)
             return self._sessions[role]
 
     def clear(self, session: LiveSession) -> None:

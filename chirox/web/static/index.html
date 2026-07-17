@@ -8,7 +8,7 @@
     <!-- versioned asset URLs: an old cached copy can never be reused.
          BUMP THIS on every styles.css / app.js change — the app runs in a
          persistent Edge profile that will otherwise serve the cached copy. -->
-    <link rel="stylesheet" href="/static/styles.css?v=12">
+    <link rel="stylesheet" href="/static/styles.css?v=13">
   </head>
   <body class="mode-training">
     <header class="topbar">
@@ -51,8 +51,10 @@
           <div class="hud-metrics">
             <span id="hudTimer" class="hud-metric">0s</span>
             <span id="hudForm" class="hud-metric">—</span>
+            <span id="hudReps" class="hud-metric">reps —</span>
             <span id="frontConf" class="hud-metric">--</span>
           </div>
+          <div id="hudPhase" class="hud-phase">No routine — free train or begin Eight Brocades.</div>
           <div id="hudAngles" class="hud-angles"></div>
           <p id="guideInstruction" class="hud-line">Set the body into the shape. Wireguy measures; he does not flatter.</p>
           <p id="frontMsg" class="cam-msg">Ready.</p>
@@ -65,6 +67,8 @@
         <button id="trainBtn" class="go practice-action" type="button">CALL ME</button>
         <button id="recordBtn" class="go practice-action" type="button">RECORD</button>
         <button id="pickWorkBtn" class="go practice-action" type="button">PICK WORK</button>
+        <button id="routineNextBtn" class="go practice-action" type="button" hidden>NEXT PHASE</button>
+        <button id="routineStopBtn" class="go practice-action danger-lite" type="button" hidden>END &amp; SEAL</button>
         <label class="check-row"><input id="mirrorToggle" type="checkbox" checked> Flip</label>
         <span id="runtime" class="note" hidden>0.0s</span>
         <span id="flags" class="note"></span>
@@ -103,6 +107,14 @@
         </div>
         <button id="closeDrawerBtn" class="chip" type="button">CLOSE</button>
       </div>
+
+      <section class="routines" id="routinesCard" aria-label="Named routines">
+        <div class="hall-head">
+          <span class="strip-label">Named Routines</span>
+          <span class="note">Begin a sequence. Wireguy advances phases and seals counts forever.</span>
+        </div>
+        <div id="routineList" class="chip-row">Loading…</div>
+      </section>
 
       <section class="hall" id="trainingHall" aria-label="The Training Hall">
         <div class="hall-head">
@@ -266,6 +278,6 @@
       <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next chart">&rsaquo;</button>
     </div>
 
-    <script src="/static/app.js?v=12"></script>
+    <script src="/static/app.js?v=13"></script>
   </body>
 </html>

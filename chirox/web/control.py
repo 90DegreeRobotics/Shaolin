@@ -557,6 +557,19 @@ def timeline(limit: int = 20) -> list[dict]:
             p = e.payload
             rows.append({"type": "stance", "date": p.get("started", "")[:10], "day": None,
                          "what": p.get("stance"), "detail": p.get("assessment", "")[:80]})
+        elif e.type == "routine_session":
+            p = e.payload
+            totals = p.get("totals") or {}
+            rows.append({
+                "type": "routine",
+                "date": p.get("date") or (p.get("started") or "")[:10],
+                "day": p.get("day_number"),
+                "what": p.get("label") or p.get("routine_key"),
+                "detail": (
+                    f"{totals.get('phases_completed', 0)}/{totals.get('phases_total', '?')} phases, "
+                    f"{totals.get('reps_total', 0)} reps, {totals.get('duration_s', 0)}s"
+                ),
+            })
     return rows[-limit:][::-1]
 
 

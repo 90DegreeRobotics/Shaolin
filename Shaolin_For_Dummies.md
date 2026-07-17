@@ -22,6 +22,8 @@ camera, one wireframe guy, clear Measured / Uncertain / No-body truth states.
 The top mode switch matters:
 
 - **Training Mode** = mirror, exercise reference, live geometry, training controls.
+  Use **PICK WORK → Named Routines** (or say *"Eight Brocades"*) so Wireguy
+  counts each phase forever into the Dojo Record when you **END & SEAL**.
 - **Learning Mode** = Master chat, Piper/Whisper activity, read-along library,
   Mandarin focus, and day-by-day Dojo Record fields you can edit and save.
 

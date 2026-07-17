@@ -48,8 +48,11 @@ the manual's 12-month blueprint.
 | Holding Up the Heavens (measured) | 双手托天 | Arms press the sky, legs rooted; the Mirror checks arm extension and root. 10–15 slow reps. | Phase 1 |
 
 **The Eight Brocades — 八段锦 bā duàn jǐn** (full set from Phase 2; movement
-one alone in Phase 1). Each movement pairs breath with a stretch-and-press
-pattern; the traditional names carry the intent:
+one alone in Phase 1). Naming and order follow the Shaolin Temple Europe /
+Shi Heng Yi teaching line used in the cockpit Named Routine
+`eight_brocades_ste`. Wireguy counts phases forever into the Dojo Record when
+you seal a session; it does not grade form from video. Each movement pairs
+breath with a stretch-and-press pattern; the traditional names carry the intent:
 
 | # | Movement | Chinese | What it works |
 | --- | --- | --- | --- |

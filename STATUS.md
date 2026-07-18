@@ -176,7 +176,10 @@ model; and two capabilities remain honestly gated on physical hardware.
     (and Ollama) on launch so Chirox listens without a manual WAKE; speak
     *"Chirox, start recording"*, *"record one-legged stance for one minute"*,
     or *"stop recording"* — he answers aloud and drives the live-tee recorder.
-    CSS/JS cache bust is `?v=16`.
+    **One-viewport Training Mode (2026-07-18):** all practice buttons sit in the
+    top bar; CALL ME / RECORD panels fly over the mirror; nothing sits below the
+    camera; the stage fills the remaining viewport with no page scroll.
+    CSS/JS cache bust is `?v=17`.
 - **Voice pipeline hardening (2026-07-16):** Piper download uses timeout +
     atomic write and refuses truncated files; `Voice.preflight()` reports honest
     mouth/ear readiness before the ear greets; the mic queue is bounded (drop-
@@ -186,7 +189,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     `Launch_Chirox_Voice.ps1 -Stop` also kill narrator/trainer organs; self-test
     reports both prompted and live-path (unprompted) STT wake results. Gate 2
     (live mic witness) remains open.
-- `tests/` - 266 passing unit tests as of `python -m pytest tests` on 2026-07-17.
+- `tests/` - 266 passing unit tests as of `python -m pytest tests` on 2026-07-18.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

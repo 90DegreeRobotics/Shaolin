@@ -42,8 +42,12 @@ def test_static_frontend_served():
     for element in ("practiceStage", "earBtn", "silenceButton", "trainBtn",
                    "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME",
                    "routinesCard", "routineList", "hudPhase", "routineNextBtn",
-                   "routineStopBtn"):
+                   "routineStopBtn", "practiceBar", "practice-cluster"):
         assert element in text, element
+    # Practice actions live in the top bar — nothing below the camera stage.
+    assert text.index("practiceBar") < text.index("practiceStage")
+    assert text.index("trainBtn") < text.index("frontCanvas")
+    assert "practice-bar" not in text
     # the Training Hall lives in Pick Work, with a fullscreen viewer
     for element in ("trainingHall", "hallGroups", "chartShelf",
                     "lightbox", "lbImage", "lbPlaybackTools"):

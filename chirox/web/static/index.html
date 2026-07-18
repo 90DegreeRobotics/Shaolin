@@ -8,7 +8,7 @@
     <!-- versioned asset URLs: an old cached copy can never be reused.
          BUMP THIS on every styles.css / app.js change — the app runs in a
          persistent Edge profile that will otherwise serve the cached copy. -->
-    <link rel="stylesheet" href="/static/styles.css?v=16">
+    <link rel="stylesheet" href="/static/styles.css?v=17">
   </head>
   <body class="mode-training">
     <header class="topbar">
@@ -19,6 +19,17 @@
       <nav class="mode-tabs" aria-label="Chirox mode">
         <button id="trainingModeBtn" class="mode-tab sel" type="button">Training</button>
         <button id="learningModeBtn" class="mode-tab" type="button">Learning</button>
+      </nav>
+      <nav class="practice-cluster" id="practiceBar" aria-label="Practice actions">
+        <button id="trainBtn" class="go practice-action" type="button">CALL ME</button>
+        <button id="recordBtn" class="go practice-action" type="button">RECORD</button>
+        <button id="pickWorkBtn" class="go practice-action" type="button">PICK WORK</button>
+        <button id="routineNextBtn" class="go practice-action" type="button" hidden>NEXT PHASE</button>
+        <button id="routineStopBtn" class="go practice-action danger-lite" type="button" hidden>END &amp; SEAL</button>
+        <label class="check-row"><input id="mirrorToggle" type="checkbox" checked> Flip</label>
+        <span id="runtime" class="note" hidden>0.0s</span>
+        <span id="flags" class="note"></span>
+        <span id="sysCodex" class="note"></span>
       </nav>
       <nav class="ear-cluster" aria-label="Voice">
         <button id="earBtn" class="toggle" type="button" title="Start Ollama and set Master Chirox listening">WAKE</button>
@@ -36,6 +47,29 @@
     </div>
 
     <section id="practiceStage" class="practice-stage" aria-label="Wireguy practice stage">
+      <section id="trainStrip" class="strip practice-panel practice-flyout" hidden>
+        <span class="strip-label">Drills</span>
+        <div id="drillList" class="chip-row">Loading…</div>
+        <span class="strip-label">Seconds</span>
+        <button class="chip time-chip" data-sec="30" type="button">30</button>
+        <button class="chip time-chip sel" data-sec="60" type="button">60</button>
+        <button class="chip time-chip" data-sec="90" type="button">90</button>
+        <button id="trainGo" class="go" type="button">BEGIN — HE CALLS THE DRILLS</button>
+        <span id="trainNote" class="note">Pick nothing and Chirox chooses what you have practiced least.</span>
+      </section>
+
+      <section id="recordStrip" class="strip practice-panel practice-flyout" hidden>
+        <span class="strip-label">Exercise</span>
+        <div id="recordList" class="chip-row">Loading…</div>
+        <span class="strip-label">Minutes</span>
+        <button class="chip len-chip" data-min="1" type="button">1</button>
+        <button class="chip len-chip" data-min="3" type="button">3</button>
+        <button class="chip len-chip sel" data-min="5" type="button">5</button>
+        <button class="chip len-chip" data-min="10" type="button">10</button>
+        <button id="recordGo" class="go" type="button">START RECORDING</button>
+        <span id="recordNote" class="note">Wireguy stays live while video saves; manifest seals when it completes.</span>
+      </section>
+
       <article class="cam-box" id="frontBox">
         <canvas id="frontCanvas" width="640" height="360"></canvas>
         <div id="camLoading" class="cam-loading" hidden>
@@ -62,41 +96,6 @@
         </div>
         <span class="mirror-seal">nothing is saved</span>
       </article>
-
-      <div class="practice-bar">
-        <button id="trainBtn" class="go practice-action" type="button">CALL ME</button>
-        <button id="recordBtn" class="go practice-action" type="button">RECORD</button>
-        <button id="pickWorkBtn" class="go practice-action" type="button">PICK WORK</button>
-        <button id="routineNextBtn" class="go practice-action" type="button" hidden>NEXT PHASE</button>
-        <button id="routineStopBtn" class="go practice-action danger-lite" type="button" hidden>END &amp; SEAL</button>
-        <label class="check-row"><input id="mirrorToggle" type="checkbox" checked> Flip</label>
-        <span id="runtime" class="note" hidden>0.0s</span>
-        <span id="flags" class="note"></span>
-        <span id="sysCodex" class="note"></span>
-      </div>
-
-      <section id="trainStrip" class="strip practice-panel" hidden>
-        <span class="strip-label">Drills</span>
-        <div id="drillList" class="chip-row">Loading…</div>
-        <span class="strip-label">Seconds</span>
-        <button class="chip time-chip" data-sec="30" type="button">30</button>
-        <button class="chip time-chip sel" data-sec="60" type="button">60</button>
-        <button class="chip time-chip" data-sec="90" type="button">90</button>
-        <button id="trainGo" class="go" type="button">BEGIN — HE CALLS THE DRILLS</button>
-        <span id="trainNote" class="note">Pick nothing and Chirox chooses what you have practiced least.</span>
-      </section>
-
-      <section id="recordStrip" class="strip practice-panel" hidden>
-        <span class="strip-label">Exercise</span>
-        <div id="recordList" class="chip-row">Loading…</div>
-        <span class="strip-label">Minutes</span>
-        <button class="chip len-chip" data-min="1" type="button">1</button>
-        <button class="chip len-chip" data-min="3" type="button">3</button>
-        <button class="chip len-chip sel" data-min="5" type="button">5</button>
-        <button class="chip len-chip" data-min="10" type="button">10</button>
-        <button id="recordGo" class="go" type="button">START RECORDING</button>
-        <span id="recordNote" class="note">Wireguy stays live while video saves; manifest seals when it completes.</span>
-      </section>
     </section>
 
     <aside id="workDrawer" class="work-drawer" hidden aria-label="Pick work">
@@ -278,6 +277,6 @@
       <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next chart">&rsaquo;</button>
     </div>
 
-    <script src="/static/app.js?v=16"></script>
+    <script src="/static/app.js?v=17"></script>
   </body>
 </html>

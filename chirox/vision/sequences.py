@@ -424,28 +424,48 @@ def make_tracker(routine_key: str) -> SequenceTracker:
     return SequenceTracker(SEQUENCE_CATALOG[routine_key])
 
 
-def free_train_tag(points: dict[str, Point]) -> dict | None:
-    """Best matching known hold among STANCES when cleanly measured. None if unsure."""
-    best = None
+def detect_stance(points: dict[str, Point], *, min_score: float = 0.55) -> dict | None:
+    """Best matching known hold among STANCES. Pure geometry — no generative guess.
+
+    Scores every stance evaluator that can see the body. Prefers clean form, then
+    higher landmark confidence, then fewer flags. Returns None when nothing is
+    clear enough to name (standing casually, mid-transition, bad framing).
+    """
+    best_key = None
+    best_reading = None
     best_score = -1.0
     for key, evaluator in STANCES.items():
         reading = evaluator(points)
         if reading.uncertain:
             continue
-        # Prefer clean form; break ties by confidence.
-        score = reading.confidence + (0.5 if not reading.flags else 0.0)
+        score = (
+            reading.confidence
+            + (0.35 if not reading.flags else 0.0)
+            - 0.04 * len(reading.flags)
+        )
         if score > best_score:
             best_score = score
-            best = {
-                "key": key,
-                "label": reading.stance,
-                "confidence": reading.confidence,
-                "flags": list(reading.flags),
-                "form_clean": not reading.flags,
-            }
-    if best is None or best_score < 0.7:
+            best_key = key
+            best_reading = reading
+    if best_key is None or best_reading is None or best_score < min_score:
         return None
-    return best
+    return {
+        "key": best_key,
+        "label": best_reading.stance,
+        "confidence": best_reading.confidence,
+        "flags": list(best_reading.flags),
+        "form_clean": not best_reading.flags,
+        "score": round(best_score, 3),
+    }
+
+
+def free_train_tag(points: dict[str, Point]) -> dict | None:
+    """Best matching known hold when cleanly measured. None if unsure."""
+    # Slightly stricter than live auto-detect so free-train tags stay honest.
+    hit = detect_stance(points, min_score=0.7)
+    if hit is None:
+        return None
+    return {k: hit[k] for k in ("key", "label", "confidence", "flags", "form_clean")}
 
 
 def seal_routine_session(summary: dict, source: str = "0",

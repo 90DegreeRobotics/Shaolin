@@ -59,10 +59,14 @@ POSE_INDEX = {
 }
 
 
+# Live mirror default: watch first, name what is seen. Locked holds are opt-in.
+AUTO_STANCE = "auto"
+
+
 @dataclass(frozen=True)
 class SessionConfig:
     source: int | str = 0
-    stance: str = "horse"
+    stance: str = AUTO_STANCE
     view_mode: str = "overlay"
     role: str = "front"
 
@@ -125,7 +129,7 @@ def camera_health(source: int | str) -> dict[str, Any]:
 
 class LiveSession:
     def __init__(self, config: SessionConfig, manager: "LiveSessionManager | None" = None):
-        if config.stance not in STANCES:
+        if config.stance != AUTO_STANCE and config.stance not in STANCES:
             raise ValueError(f"unknown stance '{config.stance}'")
         self.config = config
         self._manager = manager
@@ -178,9 +182,6 @@ class LiveSession:
                 ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
                 if not ok:
                     continue
-                # Re-read stance each frame so RECORD can switch the measured
-                # hold without killing the camera / freezing Wireguy.
-                evaluator = STANCES[self.config.stance]
                 meta: dict[str, Any] = {
                     "type": "frame",
                     "role": self.config.role,
@@ -192,19 +193,50 @@ class LiveSession:
                     "state": "no_body",
                     "routine": None,
                     "free_tag": None,
+                    "auto": self.config.stance == AUTO_STANCE,
                     "recording": bool(self._manager and self._manager.is_recording()),
                 }
 
                 if lm:
                     pts = points_from_landmarks(lm)
-                    reading = evaluator(pts)
                     meta["landmarks"] = landmarks_payload(lm)
-                    meta["reading"] = serialize_reading(reading)
-                    meta["state"] = "uncertain" if reading.uncertain else "measured"
+                    reading = None
                     if self._manager is not None:
                         meta["routine"] = self._manager.push_routine(pts, elapsed_s)
-                        if meta["routine"] is None:
+                    if self.config.stance == AUTO_STANCE:
+                        from chirox.vision.sequences import detect_stance
+                        from chirox.vision.stances import StanceReading
+
+                        hit = detect_stance(pts)
+                        if hit is not None:
+                            reading = STANCES[hit["key"]](pts)
+                            meta["free_tag"] = {
+                                "key": hit["key"],
+                                "label": hit["label"],
+                                "confidence": hit["confidence"],
+                                "flags": hit["flags"],
+                                "form_clean": hit["form_clean"],
+                            }
+                        else:
+                            # Body visible, no clear named hold yet — do not invent one.
+                            vis = [float(getattr(lm[i], "visibility", 0)) for i in (11, 12, 23, 24)]
+                            conf = sum(vis) / len(vis) if vis else 0.0
+                            reading = StanceReading(
+                                "Detecting",
+                                {},
+                                [],
+                                "Watching for a known hold. Stand a shape, or pick one.",
+                                round(conf, 3),
+                                False,
+                            )
+                    else:
+                        # Locked hold: re-read each frame so RECORD can switch
+                        # without killing the camera / freezing Wireguy.
+                        reading = STANCES[self.config.stance](pts)
+                        if self._manager is not None and meta["routine"] is None:
                             meta["free_tag"] = self._manager.free_tag(pts)
+                    meta["reading"] = serialize_reading(reading)
+                    meta["state"] = "uncertain" if reading.uncertain else "measured"
 
                 yield pack_frame(meta, encoded.tobytes())
                 await asyncio.sleep(0)
@@ -337,7 +369,8 @@ class LiveSessionManager:
                 return {"ok": False, "error": str(exc)}
             self._tee_started = datetime.now(timezone.utc).isoformat()
             cfg = self._configs.get("front", SessionConfig(role="front"))
-            new_stance = stance_key or cfg.stance
+            # Named hold locks measurement; free recording keeps current (often auto).
+            new_stance = stance_key or cfg.stance or AUTO_STANCE
             self._configs["front"] = SessionConfig(
                 source=src, stance=new_stance, view_mode=cfg.view_mode, role="front",
             )

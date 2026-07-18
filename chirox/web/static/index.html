@@ -8,7 +8,7 @@
     <!-- versioned asset URLs: an old cached copy can never be reused.
          BUMP THIS on every styles.css / app.js change — the app runs in a
          persistent Edge profile that will otherwise serve the cached copy. -->
-    <link rel="stylesheet" href="/static/styles.css?v=17">
+    <link rel="stylesheet" href="/static/styles.css?v=18">
   </head>
   <body class="mode-training">
     <header class="topbar">
@@ -21,6 +21,7 @@
         <button id="learningModeBtn" class="mode-tab" type="button">Learning</button>
       </nav>
       <nav class="practice-cluster" id="practiceBar" aria-label="Practice actions">
+        <button id="autoDetectBtn" class="go practice-action on" type="button" title="Watch first; name a known hold when clear">AUTO</button>
         <button id="trainBtn" class="go practice-action" type="button">CALL ME</button>
         <button id="recordBtn" class="go practice-action" type="button">RECORD</button>
         <button id="pickWorkBtn" class="go practice-action" type="button">PICK WORK</button>
@@ -79,8 +80,8 @@
         <div class="stage-hud" aria-live="polite">
           <div id="truthState" class="truth no-body">Idle</div>
           <div class="hud-drill">
-            <strong id="guideName">Horse Stance (Ma Bu)</strong>
-            <span id="trackedStance" class="hud-track">tracking Wireguy</span>
+            <strong id="guideName">Detecting…</strong>
+            <span id="trackedStance" class="hud-track">watching for a known hold</span>
           </div>
           <div class="hud-metrics">
             <span id="hudTimer" class="hud-metric">0s</span>
@@ -88,9 +89,9 @@
             <span id="hudReps" class="hud-metric">reps —</span>
             <span id="frontConf" class="hud-metric">--</span>
           </div>
-          <div id="hudPhase" class="hud-phase">No routine — free train or begin Eight Brocades.</div>
+          <div id="hudPhase" class="hud-phase">Detecting — hold a known shape, or pick one.</div>
           <div id="hudAngles" class="hud-angles"></div>
-          <p id="guideInstruction" class="hud-line">Set the body into the shape. Wireguy measures; he does not flatter.</p>
+          <p id="guideInstruction" class="hud-line">Wireguy watches first. When a known hold is clear, he names it. Pick Work locks a stance.</p>
           <p id="frontMsg" class="cam-msg">Ready.</p>
           <p id="frontAssess" class="cam-assess"></p>
         </div>
@@ -277,6 +278,6 @@
       <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next chart">&rsaquo;</button>
     </div>
 
-    <script src="/static/app.js?v=17"></script>
+    <script src="/static/app.js?v=18"></script>
   </body>
 </html>

@@ -42,12 +42,15 @@ def test_static_frontend_served():
     for element in ("practiceStage", "earBtn", "silenceButton", "trainBtn",
                    "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME",
                    "routinesCard", "routineList", "hudPhase", "routineNextBtn",
-                   "routineStopBtn", "practiceBar", "practice-cluster"):
+                   "routineStopBtn", "practiceBar", "practice-cluster",
+                   "autoDetectBtn", "Detecting"):
         assert element in text, element
     # Practice actions live in the top bar — nothing below the camera stage.
     assert text.index("practiceBar") < text.index("practiceStage")
     assert text.index("trainBtn") < text.index("frontCanvas")
     assert "practice-bar" not in text
+    # Opens in auto-detect, not locked to horse.
+    assert 'stance: "auto"' in client.get("/static/app.js").text
     # the Training Hall lives in Pick Work, with a fullscreen viewer
     for element in ("trainingHall", "hallGroups", "chartShelf",
                     "lightbox", "lbImage", "lbPlaybackTools"):
@@ -347,6 +350,15 @@ def test_pack_frame_round_trips_header_and_jpeg():
     got_meta, got_jpeg = unpack_frame(blob)
     assert got_meta == meta
     assert got_jpeg == jpeg
+
+
+def test_session_config_defaults_to_auto_detect():
+    cfg = SessionConfig()
+    assert cfg.stance == "auto"
+    manager = LiveSessionManager()
+    started = manager.start(SessionConfig(source=0, stance="auto", role="front"))
+    assert started["config"]["stance"] == "auto"
+    manager.stop_all()
 
 
 def test_session_manager_reports_active_sources():

@@ -2,7 +2,7 @@
 
 from chirox.vision.sequences import (
     EIGHT_BROCADES_STE, SEQUENCE_CATALOG, SequenceTracker, arrow_draw_signal,
-    free_train_tag, heaven_earth_signal, list_sequences, make_tracker,
+    detect_stance, free_train_tag, heaven_earth_signal, list_sequences, make_tracker,
 )
 from chirox.vision.stances import (
     LEFT_ANKLE, LEFT_ELBOW, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER, LEFT_WRIST,
@@ -105,6 +105,17 @@ def test_free_train_tag_returns_a_known_hold_or_none():
     # May be arms_raised / wuji / parallel depending on thresholds — or None if uncertain.
     if tag is not None:
         assert "key" in tag and "label" in tag
+
+
+def test_detect_stance_names_a_hold_or_stays_honest():
+    hit = detect_stance(_standing(wrists_y=0.2))
+    if hit is not None:
+        assert hit["key"]
+        assert hit["label"]
+        assert "score" in hit
+    # Empty / invisible points must not invent a stance.
+    blank = {k: (0.5, 0.5, 0.0) for k in _standing()}
+    assert detect_stance(blank) is None
 
 
 def test_unknown_routine_raises():

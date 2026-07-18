@@ -38,7 +38,7 @@ async def no_stale_cockpit(request, call_next):
 
 class StartRequest(BaseModel):
     source: int | str = 0
-    stance: str = "horse"
+    stance: str = "auto"
     view_mode: str = "overlay"
     role: str = "front"
 
@@ -46,7 +46,7 @@ class StartRequest(BaseModel):
 class DualStartRequest(BaseModel):
     front_source: int | str = 0
     side_source: int | str = 2
-    stance: str = "horse"
+    stance: str = "auto"
     view_mode: str = "overlay"
 
 

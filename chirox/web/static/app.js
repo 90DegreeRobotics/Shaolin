@@ -23,7 +23,7 @@ for (const role of ROLES) {
 const state = {
   running: false,
   pair: ["front"],
-  stance: "horse",
+  stance: "auto",
   sources: { front: 0 },
   opacity: 0.9,
   startedAt: null,
@@ -444,12 +444,23 @@ function updateRoutineHud(payload) {
     state.routineActive = true;
   } else {
     const tag = payload && payload.free_tag;
+    const auto = state.stance === "auto" || (payload && payload.auto);
     if (tag && tag.label) {
       phaseEl.textContent = tag.form_clean
-        ? `Free train · ${tag.label}`
-        : `Free train · ${tag.label} (flags)`;
+        ? (auto ? `Detected · ${tag.label}` : `Free train · ${tag.label}`)
+        : (auto ? `Detected · ${tag.label} (flags)` : `Free train · ${tag.label} (flags)`);
+      if (auto) {
+        $("guideName").textContent = tag.label;
+        $("trackedStance").textContent = "auto-detected";
+      }
     } else if (!state.routineActive) {
-      phaseEl.textContent = "No routine — free train or begin Eight Brocades.";
+      if (auto) {
+        phaseEl.textContent = "Detecting — hold a known shape, or pick one.";
+        $("guideName").textContent = "Detecting…";
+        $("trackedStance").textContent = "watching for a known hold";
+      } else {
+        phaseEl.textContent = "No routine — free train or begin Eight Brocades.";
+      }
     }
     if (!routine) {
       if (nextBtn) nextBtn.hidden = true;
@@ -665,12 +676,23 @@ function renderChartShelf() {
 function showGuide(key) {
   const drill = state.guides.drills.get(key);
   if (!drill) return;
-  $("guideName").textContent = drill.label || key;
-  $("guideInstruction").textContent = drill.instruction || "Move deliberately and keep the whole body in frame.";
-  $("guideKind").textContent = drill.kind === "reps" ? "Counted reps" : "Timed hold";
-  $("guideCamera").textContent = drill.camera_instruction
-    || "Built-in webcam (front). Stand far enough back for head to ankles.";
-  $("guideTruth").textContent = drill.guide_image ? drill.guide_image.title : (drill.guide_title || "Measured by Chirox vision.");
+  if ($("guideName")) $("guideName").textContent = drill.label || key;
+  if ($("guideInstruction")) {
+    $("guideInstruction").textContent = drill.instruction
+      || "Move deliberately and keep the whole body in frame.";
+  }
+  if ($("guideKind")) {
+    $("guideKind").textContent = drill.kind === "reps" ? "Counted reps" : "Timed hold";
+  }
+  if ($("guideCamera")) {
+    $("guideCamera").textContent = drill.camera_instruction
+      || "Built-in webcam (front). Stand far enough back for head to ankles.";
+  }
+  if ($("guideTruth")) {
+    $("guideTruth").textContent = drill.guide_image
+      ? drill.guide_image.title
+      : (drill.guide_title || "Measured by Chirox vision.");
+  }
   if ($("trackedStance") && !state.running) {
     $("trackedStance").textContent = drill.label || key;
   }
@@ -687,21 +709,32 @@ async function loadGuides() {
     state.guides.drills = new Map((data.drills || []).map((d) => [d.key, d]));
     renderTrainingHall();
     renderChartShelf();
-    showGuide(state.stance);
+    if (state.stance !== "auto") showGuide(state.stance);
   } catch (err) {
     $("guideInstruction").textContent = "Exercise guide unavailable.";
   }
 }
 
 // The mirror follows the practitioner: any hold picked in the Training Hall
-// becomes the stance the live wireframe measures.
+// becomes the stance the live wireframe measures. "auto" watches first and names
+// what it can see among known holds — it does not invent a form.
 async function setTrackedStance(key, label) {
   if (state.stance === key) {
     $("trackedStance").textContent = label || key;
     return;
   }
   state.stance = key;
-  $("trackedStance").textContent = label || key;
+  if (key === "auto") {
+    $("guideName").textContent = "Detecting…";
+    $("trackedStance").textContent = "watching for a known hold";
+    $("guideInstruction").textContent =
+      "Wireguy watches first. When a known hold is clear, he names it. Pick Work locks a stance.";
+  } else {
+    $("trackedStance").textContent = label || key;
+    showGuide(key);
+  }
+  const autoBtn = $("autoDetectBtn");
+  if (autoBtn) autoBtn.classList.toggle("on", key === "auto");
   resetHoldMetrics();
   if (state.running) {
     await mirrorOff();
@@ -1086,6 +1119,12 @@ $("pickWorkBtn").addEventListener("click", () => {
 });
 $("closeDrawerBtn").addEventListener("click", closeWorkDrawer);
 
+if ($("autoDetectBtn")) {
+  $("autoDetectBtn").addEventListener("click", () => {
+    setTrackedStance("auto", "Detecting…");
+  });
+}
+
 // WAKE: one press brings Ollama up (if it is down) and sets the ear listening.
 $("earBtn").addEventListener("click", async () => {
   const btn = $("earBtn");
@@ -1273,7 +1312,7 @@ async function loadDrillCatalog() {
       box.append(chip);
     }
     renderRecordCatalog(data.drills || []);
-    showGuide(state.stance);
+    if (state.stance !== "auto") showGuide(state.stance);
   } catch (err) {
     $("drillList").textContent = "Catalog unavailable.";
     if ($("recordList")) $("recordList").textContent = "Catalog unavailable.";

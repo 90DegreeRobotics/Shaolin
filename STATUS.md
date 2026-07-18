@@ -149,7 +149,9 @@ model; and two capabilities remain honestly gated on physical hardware.
     drives Hall, CALL ME, and RECORD. Browser playback can prepare an H.264 proxy
     or fall back to MJPEG streaming without altering evidence files. **Head and
     neck (2026-07-16):** head circle from ear midpoint + neck to shoulders —
-    overlay-only, never part of stance geometry. **Full-body Wireguy overlay
+    overlay-only, never part of stance geometry. **Head yaw + pitch (2026-07-17):**
+    Wireguy reads side-to-side (yaw) and up/down (pitch) from nose vs ear line,
+    with arrows and a degree readout — still overlay-only. **Full-body Wireguy overlay
     (2026-07-16):** hands (wrists + knuckles) and feet (ankles + heels + toes)
     draw on the mirror for presence; stance geometry still uses the 12-joint
     map. **Forever Routine Tracker (2026-07-16):** hybrid recognition — you name
@@ -174,7 +176,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     (and Ollama) on launch so Chirox listens without a manual WAKE; speak
     *"Chirox, start recording"*, *"record one-legged stance for one minute"*,
     or *"stop recording"* — he answers aloud and drives the live-tee recorder.
-    CSS/JS cache bust is `?v=15`.
+    CSS/JS cache bust is `?v=16`.
 - **Voice pipeline hardening (2026-07-16):** Piper download uses timeout +
     atomic write and refuses truncated files; `Voice.preflight()` reports honest
     mouth/ear readiness before the ear greets; the mic queue is bounded (drop-

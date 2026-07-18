@@ -163,12 +163,11 @@ function drawHeadAndNeck(ctx, canvas, landmarks, stroke) {
   ctx.stroke();
 }
 
-// Head orientation from the face landmarks. Yaw (turn left/right) is the nose's
-// horizontal offset from the ear midpoint, scaled by the ear span so it holds as
-// the practitioner moves nearer or further from the camera. Worked in canvas
-// space (the mirror flip is already applied), so "right" is the way the on-screen
-// head turns — what the practitioner watches themselves do. Returns null when the
-// face cannot be read. Overlay-only; never touches the measured stance geometry.
+// Head orientation from the face landmarks. Overlay-only; never touches stance
+// geometry. Worked in canvas space (mirror flip already applied).
+//   yaw   — nose left/right of the ear midpoint (side to side)
+//   pitch — nose above/below a neutral rest on the ear line (up / down)
+// Both are scaled by ear span so distance to camera does not invent degrees.
 function headOrientation(canvas, landmarks) {
   const nose = pointOf(landmarks, "nose");
   const le = pointOf(landmarks, "left_ear");
@@ -179,45 +178,72 @@ function headOrientation(canvas, landmarks) {
   const pr = toCanvasPoint(canvas, re);
   const earMid = { x: (pl.x + pr.x) / 2, y: (pl.y + pr.y) / 2 };
   const earSpan = Math.hypot(pr.x - pl.x, pr.y - pl.y) || 1;
-  const yaw = Math.max(-90, Math.min(90, ((pn.x - earMid.x) / (earSpan / 2)) * 50));
+  const half = earSpan / 2;
+  const yaw = Math.max(-90, Math.min(90, ((pn.x - earMid.x) / half) * 50));
+  // Image y grows downward. A face looking forward has the nose a little below
+  // the ear line; subtract that bias so level reads near 0°, up is negative,
+  // down is positive.
+  const NEUTRAL_PITCH = 0.45;
+  const pitch = Math.max(-90, Math.min(90, (((pn.y - earMid.y) / half) - NEUTRAL_PITCH) * 55));
   const conf = Math.min(nose.visibility, le.visibility, re.visibility);
-  return { yaw, conf, earMid, earSpan };
+  return { yaw, pitch, conf, earMid, earSpan };
 }
 
-// Draw the head-turn feedback: an arrow off the skull the way the head faces
-// (longer the harder the turn) and a degree readout above the head, so the
-// practitioner sees WHEN the head turns and by HOW MUCH. A distinct tint keeps it
-// legible against the green bones.
+function _drawHeadArrow(ctx, x0, y0, x1, y1, tint, alpha, lineW) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const ah = Math.max(5, lineW * 3);
+  ctx.strokeStyle = `rgba(${tint}, ${alpha})`;
+  ctx.lineWidth = lineW;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - ux * ah + uy * ah * 0.55, y1 - uy * ah - ux * ah * 0.55);
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - ux * ah - uy * ah * 0.55, y1 - uy * ah + ux * ah * 0.55);
+  ctx.stroke();
+}
+
+// Draw head-orientation feedback: arrows for yaw (L/R) and pitch (up/down),
+// plus a degree readout so the practitioner sees both axes.
 function drawHeadOrientation(ctx, canvas, landmarks) {
   const o = headOrientation(canvas, landmarks);
   if (!o || o.conf < 0.3) return;
   const tint = "130, 200, 255";
   const alpha = Math.max(0.4, o.conf * state.opacity);
-  const deg = Math.round(Math.abs(o.yaw));
-  const turned = deg > 6;
+  const yawDeg = Math.round(Math.abs(o.yaw));
+  const pitchDeg = Math.round(Math.abs(o.pitch));
+  const yawed = yawDeg > 6;
+  const pitched = pitchDeg > 6;
+  const lineW = Math.max(2, canvas.width / 300);
+  const x0 = o.earMid.x;
+  const y0 = o.earMid.y;
 
-  if (turned) {
+  if (yawed) {
     const dir = o.yaw > 0 ? 1 : -1;
-    const arrow = o.earSpan * 0.4 + (Math.min(deg, 90) / 90) * o.earSpan * 1.6;
-    const x0 = o.earMid.x;
-    const y0 = o.earMid.y;
-    const x1 = x0 + dir * arrow;
-    ctx.strokeStyle = `rgba(${tint}, ${alpha})`;
-    ctx.lineWidth = Math.max(2, canvas.width / 300);
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y0);
-    ctx.stroke();
-    const ah = Math.max(5, canvas.width / 120);
-    ctx.beginPath();
-    ctx.moveTo(x1, y0);
-    ctx.lineTo(x1 - dir * ah, y0 - ah * 0.7);
-    ctx.moveTo(x1, y0);
-    ctx.lineTo(x1 - dir * ah, y0 + ah * 0.7);
-    ctx.stroke();
+    const arrow = o.earSpan * 0.4 + (Math.min(yawDeg, 90) / 90) * o.earSpan * 1.6;
+    _drawHeadArrow(ctx, x0, y0, x0 + dir * arrow, y0, tint, alpha, lineW);
+  }
+  if (pitched) {
+    // Canvas y grows down: positive pitch (looking down) → arrow down.
+    const dir = o.pitch > 0 ? 1 : -1;
+    const arrow = o.earSpan * 0.35 + (Math.min(pitchDeg, 90) / 90) * o.earSpan * 1.4;
+    _drawHeadArrow(ctx, x0, y0, x0, y0 + dir * arrow, tint, alpha, lineW);
   }
 
-  const label = turned ? `head turn ${deg}° ${o.yaw > 0 ? "right" : "left"}` : "head • forward";
+  let label = "head • level";
+  if (yawed || pitched) {
+    const parts = [];
+    if (yawed) parts.push(`${yawDeg}° ${o.yaw > 0 ? "right" : "left"}`);
+    if (pitched) parts.push(`${pitchDeg}° ${o.pitch > 0 ? "down" : "up"}`);
+    label = `head ${parts.join(" · ")}`;
+  }
   const fontPx = Math.max(12, Math.round(canvas.width / 42));
   ctx.font = `600 ${fontPx}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = "center";

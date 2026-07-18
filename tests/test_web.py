@@ -326,11 +326,13 @@ def test_landmarks_payload_tracks_hands_and_feet():
     assert feet <= names
 
 
-def test_shipped_app_js_reads_head_turn():
+def test_shipped_app_js_reads_head_yaw_and_pitch():
     client = TestClient(app)
     js = client.get("/static/app.js").text
-    assert "drawHeadOrientation" in js   # the mirror shows when/how far the head turns
-    assert "head turn" in js             # the degree readout
+    assert "drawHeadOrientation" in js
+    assert "pitch" in js                 # up / down as well as left / right
+    assert '"down"' in js or " down" in js
+    assert '"up"' in js or " up" in js
 
 
 def test_pack_frame_round_trips_header_and_jpeg():

@@ -17,12 +17,13 @@ from chirox.vision.stances import (
 def test_catalog_is_a_real_training_catalog():
     holds = set(HOLD_CATALOG)
     assert {"horse", "bow", "crane", "one_leg_stand", "drop_stance", "t_stance",
-            "parallel_ready", "meditation_stance", "empty_stance", "plank",
-            "wall_sit", "squat_hold", "hollow_hold", "glute_bridge",
-            "leg_raise_hold", "arms_raised", "wuji_standing", "horse_guard",
-            "seated_meditation"} <= holds
+            "parallel_ready", "meditation_stance", "empty_stance", "rest_stance",
+            "plank", "side_plank", "wall_sit", "squat_hold", "half_squat",
+            "deep_squat_hold", "cossack_hold", "hollow_hold", "glute_bridge",
+            "leg_raise_hold", "superman_hold", "arms_raised", "wuji_standing",
+            "standing_tree", "horse_guard", "seated_meditation"} <= holds
     assert {"squats", "pushups", "situps", "knee_raises", "jumping_jacks"} == set(REP_CATALOG)
-    assert len(full_catalog()) >= 24
+    assert len(full_catalog()) >= 30
 
 
 def test_every_hold_has_an_evaluator():
@@ -33,7 +34,7 @@ def test_every_hold_has_an_evaluator():
 
 def test_every_template_rule_has_a_message():
     for t in POSE_TEMPLATES:
-        for rules in (t.angle_rules, t.above_rules, t.tilt_rules, t.asym_rules):
+        for rules in (t.angle_rules, t.above_rules, t.tilt_rules, t.asym_rules, t.dist_rules):
             for r in rules:
                 assert r.message, f"{t.key}: rule {r.flag} has no spoken message"
 

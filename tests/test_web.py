@@ -224,6 +224,32 @@ def test_every_drill_maps_to_its_own_chart():
             assert drill["guide_image"]["title"] == CHART_TITLES[expected]
 
 
+def test_reference_pipeline_covers_all_ten_charts_and_hold_detect():
+    """PNG charts → DRILL_CHARTS → HOLD/REP catalog → detect canonical keys."""
+    from chirox.vision.sequences import detect_stance
+    from chirox.vision.stances import HOLD_CATALOG, STANCES
+    from chirox.web.guides import CHART_TITLES, DRILL_CHARTS, reference_images
+
+    assert set(CHART_TITLES) == set(range(1, 11))
+    charts_used = set(DRILL_CHARTS.values())
+    assert charts_used == set(range(1, 11)), f"every poster must have a drill: {sorted(charts_used)}"
+    for key in HOLD_CATALOG:
+        assert key in STANCES, key
+        assert key in DRILL_CHARTS, key
+    # Detect must never return CLI aliases outside the chart catalog.
+    assert "ma_bu" not in HOLD_CATALOG
+    refs = reference_images()
+    if refs:
+        assert {r["number"] for r in refs} == set(range(1, 11))
+    # Smoke: detect_stance is importable and honest on blank joints.
+    blank = {k: (0.5, 0.5, 0.0) for k in (
+        "left_hip", "left_knee", "left_ankle", "right_hip", "right_knee", "right_ankle",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+        "left_wrist", "right_wrist",
+    )}
+    assert detect_stance(blank) is None
+
+
 def test_chart_titles_are_the_printed_poster_titles():
     from chirox.web.guides import CHART_TITLES, reference_images
 

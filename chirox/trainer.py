@@ -56,8 +56,11 @@ ENCOURAGEMENTS = (
 # The rotation Chirox draws from when choosing for you: a real session mix —
 # stances, conditioning holds, and counted reps, all from the reference charts.
 DEFAULT_ROTATION = [
-    "horse", "bow", "crane", "one_leg_stand", "squat_hold", "wall_sit",
-    "plank", "horse_guard", "drop_stance", "squats", "pushups", "knee_raises",
+    "horse", "bow", "crane", "one_leg_stand", "empty_stance", "rest_stance",
+    "squat_hold", "half_squat", "wall_sit", "plank", "side_plank",
+    "horse_guard", "drop_stance", "wuji_standing", "arms_raised", "standing_tree",
+    "deep_squat_hold", "hollow_hold", "superman_hold",
+    "squats", "pushups", "knee_raises", "situps", "jumping_jacks",
 ]
 
 

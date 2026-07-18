@@ -446,12 +446,15 @@ function updateRoutineHud(payload) {
     const tag = payload && payload.free_tag;
     const auto = state.stance === "auto" || (payload && payload.auto);
     if (tag && tag.label) {
+      const chartBit = tag.chart ? ` · chart ${tag.chart}` : "";
       phaseEl.textContent = tag.form_clean
-        ? (auto ? `Detected · ${tag.label}` : `Free train · ${tag.label}`)
-        : (auto ? `Detected · ${tag.label} (flags)` : `Free train · ${tag.label} (flags)`);
+        ? (auto ? `Detected · ${tag.label}${chartBit}` : `Free train · ${tag.label}`)
+        : (auto ? `Detected · ${tag.label}${chartBit} (flags)` : `Free train · ${tag.label} (flags)`);
       if (auto) {
         $("guideName").textContent = tag.label;
-        $("trackedStance").textContent = "auto-detected";
+        $("trackedStance").textContent = tag.chart_title
+          ? `auto · ${tag.chart_title}`
+          : "auto-detected";
       }
     } else if (!state.routineActive) {
       if (auto) {

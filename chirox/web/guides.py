@@ -42,36 +42,55 @@ DRILL_CHARTS = {
     "parallel_ready": 1,
     "meditation_stance": 1,
     "empty_stance": 1,
-    # holds — variations and balance
-    "horse_guard": 2,        # chart 2: static holds in horse
-    "one_leg_stand": 7,      # chart 7: balance — one-leg stand
-    "wuji_standing": 5,      # chart 5: qi gong — wuji standing
-    # holds — conditioning and floor
-    "plank": 10,             # chart 10: floor work — plank family
-    "wall_sit": 3,           # chart 3: conditioning — wall sit
-    "squat_hold": 3,         # chart 3: conditioning — squat holds
-    "hollow_hold": 10,       # chart 10: floor work — hollow body hold
-    "glute_bridge": 3,       # chart 3: conditioning — glute bridge
-    "leg_raise_hold": 10,    # chart 10: floor work — leg raises (scaled)
-    # holds — qigong / meditation
-    "arms_raised": 5,        # chart 5: qi gong — two hands hold up the heavens
-    "seated_meditation": 8,  # chart 8: breath & meditation — breath sits
-    # reps
-    "squats": 3,             # chart 3: conditioning — slow squats
-    "pushups": 3,            # chart 3: conditioning — pushups
-    "situps": 10,            # chart 10: floor work — situps
-    "knee_raises": 4,        # chart 4: movement drills — knee raises
-    "jumping_jacks": 9,      # chart 9: small-space cardio — low-impact jacks
+    "rest_stance": 1,
+    # holds — variations (chart 2)
+    "horse_guard": 2,
+    # holds — conditioning (chart 3)
+    "wall_sit": 3,
+    "squat_hold": 3,
+    "half_squat": 3,
+    "glute_bridge": 3,
+    "plank": 3,
+    "side_plank": 3,
+    "squats": 3,
+    "pushups": 3,
+    # holds — movement drills (chart 4)
+    "knee_raises": 4,
+    # holds — qi gong (chart 5)
+    "arms_raised": 5,
+    "wuji_standing": 5,
+    "standing_tree": 5,
+    # holds — mobility (chart 6)
+    "deep_squat_hold": 6,
+    "cossack_hold": 6,
+    # holds — balance (chart 7)
+    "one_leg_stand": 7,
+    # holds — breath & meditation (chart 8)
+    "seated_meditation": 8,
+    # reps — cardio (chart 9)
+    "jumping_jacks": 9,
+    # holds / reps — floor circuit (chart 10)
+    "hollow_hold": 10,
+    "leg_raise_hold": 10,
+    "superman_hold": 10,
+    "situps": 10,
 }
 
 STANCE_KEYS = {
     "horse", "bow", "crane", "one_leg_stand", "drop_stance", "t_stance",
     "parallel_ready", "meditation_stance", "empty_stance", "horse_guard",
-    "wuji_standing",
+    "wuji_standing", "rest_stance", "standing_tree",
 }
-FLOOR_KEYS = {"plank", "pushups", "situps", "hollow_hold", "glute_bridge", "leg_raise_hold"}
-LEG_STRENGTH_KEYS = {"squats", "squat_hold", "wall_sit", "knee_raises", "jumping_jacks"}
-QIGONG_KEYS = {"arms_raised", "seated_meditation"}
+FLOOR_KEYS = {
+    "plank", "side_plank", "pushups", "situps", "hollow_hold", "glute_bridge",
+    "leg_raise_hold", "superman_hold",
+}
+LEG_STRENGTH_KEYS = {
+    "squats", "squat_hold", "half_squat", "deep_squat_hold", "cossack_hold",
+    "wall_sit", "knee_raises", "jumping_jacks",
+}
+QIGONG_KEYS = {"arms_raised", "seated_meditation", "wuji_standing"}
+MOBILITY_KEYS = {"deep_squat_hold", "cossack_hold"}
 
 GUIDE_COPY = {
     "stance": {
@@ -89,6 +108,10 @@ GUIDE_COPY = {
     "qigong": {
         "title": "Qigong / Mobility Reference",
         "instruction": "Move deliberately and keep the joints visible. Wireguy tracks the shape, not performance theater.",
+    },
+    "mobility": {
+        "title": "Mobility Reference",
+        "instruction": "Move into the end range honestly. Wireguy names the hold when the shape is clear — he does not stretch you.",
     },
     "general": {
         "title": "Training Reference",
@@ -119,6 +142,8 @@ def reference_images() -> list[dict]:
 
 
 def guide_kind(key: str) -> str:
+    if key in MOBILITY_KEYS:
+        return "mobility"
     if key in STANCE_KEYS:
         return "stance"
     if key in FLOOR_KEYS:

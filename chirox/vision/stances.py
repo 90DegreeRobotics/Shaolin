@@ -257,6 +257,15 @@ class AsymRule(NamedTuple):
     message: str
 
 
+class DistRule(NamedTuple):
+    """Joint pair must stay within a body-scale distance (e.g. feet together)."""
+    a: str
+    b: str
+    max_scale: float                  # max |a-b| / body_scale
+    flag: str
+    message: str
+
+
 class PoseTemplate(NamedTuple):
     key: str
     label: str
@@ -266,6 +275,7 @@ class PoseTemplate(NamedTuple):
     above_rules: tuple = ()
     tilt_rules: tuple = ()
     asym_rules: tuple = ()
+    dist_rules: tuple = ()
 
 
 def _body_scale(points: dict[str, Point]) -> float:
@@ -341,6 +351,13 @@ def evaluate_template(t: PoseTemplate, points: dict[str, Point]) -> StanceReadin
         if deep > r.deep_max or ext < r.ext_min:
             flags.append(r.flag)
             messages[r.flag] = r.message
+    for r in t.dist_rules:
+        pa, pb = P(r.a), P(r.b)
+        dist = math.hypot(pa[0] - pb[0], pa[1] - pb[1]) / scale
+        metrics[f"{r.flag}_dist"] = round(dist, 3)
+        if dist > r.max_scale:
+            flags.append(r.flag)
+            messages[r.flag] = r.message
 
     assessment = f"{t.label}: held." if not flags else " | ".join(messages[f] for f in dict.fromkeys(flags))
     return StanceReading(t.label, metrics, list(dict.fromkeys(flags)), assessment, round(conf, 3), False)
@@ -407,6 +424,26 @@ POSE_TEMPLATES: tuple[PoseTemplate, ...] = (
         tilt_rules=(TiltRule("~shoulder", "~hip", "vertical", 25,
                              "leaning", "Trunk tall while the rear leg carries you."),),
     ),
+    PoseTemplate(
+        "rest_stance", "Rest Stance", "front",
+        _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_WRIST, RIGHT_WRIST),
+        angle_rules=(
+            AngleRule("left_knee_angle", (LEFT_HIP, LEFT_KNEE, LEFT_ANKLE), 165, 180,
+                      "knees_bent", "Stand easy and tall — legs long."),
+            AngleRule("right_knee_angle", (RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE), 165, 180,
+                      "knees_bent", "Stand easy and tall — legs long."),
+        ),
+        above_rules=(
+            AboveRule(LEFT_HIP, LEFT_WRIST, 0.0, "hands_raised", "Let the arms hang at rest."),
+            AboveRule(RIGHT_HIP, RIGHT_WRIST, 0.0, "hands_raised", "Let the arms hang at rest."),
+        ),
+        dist_rules=(
+            DistRule(LEFT_ANKLE, RIGHT_ANKLE, 0.28, "feet_apart",
+                     "Bring the feet together — rest stance is narrow."),
+        ),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 14,
+                             "leaning", "Stand quietly upright."),),
+    ),
     # -- Conditioning + floor charts (side view) ---------------------------------------
     PoseTemplate(
         "plank", "Plank / Pushup Top", "side", ("~shoulder", "~hip", "~ankle"),
@@ -426,6 +463,32 @@ POSE_TEMPLATES: tuple[PoseTemplate, ...] = (
         "squat_hold", "Squat Hold", "side", ("~hip", "~knee", "~ankle"),
         angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 60, 118,
                                "too_high", "Sink deeper - break parallel if the knees allow."),),
+    ),
+    PoseTemplate(
+        "half_squat", "Half Squat Hold", "side", ("~hip", "~knee", "~ankle", "~shoulder"),
+        angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 105, 148,
+                               "depth_wrong", "Half squat — knees soft, not a full sink."),),
+        tilt_rules=(TiltRule("~shoulder", "~hip", "vertical", 22,
+                             "leaning", "Keep the trunk upright over the hips."),),
+    ),
+    PoseTemplate(
+        "deep_squat_hold", "Deep Squat Hold", "side", ("~hip", "~knee", "~ankle"),
+        angle_rules=(AngleRule("knee_angle", ("~hip", "~knee", "~ankle"), 40, 95,
+                               "too_high", "Sink into the deep squat — hips low."),),
+    ),
+    PoseTemplate(
+        "cossack_hold", "Cossack Squat Hold (shallow)", "front", _LEGS_FRONT,
+        asym_rules=(AsymRule(115, 145, "not_split",
+                             "One leg sits, the other extends long to the side."),),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 40,
+                             "torso_collapsed", "Keep the chest open while you sit sideways."),),
+    ),
+    PoseTemplate(
+        "side_plank", "Side Plank", "side", ("~shoulder", "~hip", "~ankle"),
+        angle_rules=(AngleRule("body_line_angle", ("~shoulder", "~hip", "~ankle"), 150, 180,
+                               "hips_broken", "One long side line — no sagging."),),
+        tilt_rules=(TiltRule("~shoulder", "~ankle", "horizontal", 32,
+                             "not_horizontal", "Stack the body into the side plank line."),),
     ),
     PoseTemplate(
         "hollow_hold", "Hollow Body Hold", "side", ("~shoulder", "~hip", "~ankle"),
@@ -451,6 +514,15 @@ POSE_TEMPLATES: tuple[PoseTemplate, ...] = (
                                "knees_bent", "Long legs - bend only what the back demands."),),
         above_rules=(AboveRule("~ankle", "~hip", 0.25, "legs_low",
                                "Raise the legs - ankles well above the hip line."),),
+    ),
+    PoseTemplate(
+        "superman_hold", "Superman Hold", "side", ("~shoulder", "~hip", "~ankle", "~wrist"),
+        above_rules=(
+            AboveRule("~wrist", "~hip", 0.02, "arms_down", "Lift the arms — chest and hands off the floor."),
+            AboveRule("~ankle", "~hip", 0.02, "legs_down", "Lift the legs — heels off the floor."),
+        ),
+        tilt_rules=(TiltRule("~shoulder", "~hip", "horizontal", 35,
+                             "not_prone", "Lie prone and extend long."),),
     ),
     # -- Qi Gong + breath charts ---------------------------------------------------------
     PoseTemplate(
@@ -513,7 +585,35 @@ POSE_TEMPLATES: tuple[PoseTemplate, ...] = (
         above_rules=(AboveRule(LEFT_HIP, LEFT_KNEE, -0.6, "standing",
                                "Settle down onto the seat."),),
     ),
+    PoseTemplate(
+        "standing_tree", "Standing Tree (foot to knee)", "front",
+        _LEGS_FRONT + (LEFT_SHOULDER, RIGHT_SHOULDER),
+        # Softer than crane: clear one-leg lift without hip-height demand.
+        asym_rules=(AsymRule(115, 155, "no_lift",
+                             "Stand on one leg — lift the other foot toward the inner knee."),),
+        tilt_rules=(TiltRule(LEFT_SHOULDER, LEFT_HIP, "vertical", 18,
+                             "leaning", "Grow tall from the standing leg."),),
+    ),
 )
+
+
+def template_specificity(key: str) -> int:
+    """How constrained a hold is — used so detect prefers the more specific name."""
+    if key == "horse":
+        return 3
+    if key == "bow":
+        return 3
+    if key == "crane":
+        return 4
+    if key == "one_leg_stand":
+        return 3
+    for t in POSE_TEMPLATES:
+        if t.key == key:
+            return (
+                len(t.angle_rules) + len(t.above_rules)
+                + len(t.tilt_rules) + len(t.asym_rules) + len(t.dist_rules)
+            )
+    return 1
 
 # one_leg_stand needs direction-agnostic logic; replace the placeholder with a closure.
 

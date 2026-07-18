@@ -425,16 +425,22 @@ def make_tracker(routine_key: str) -> SequenceTracker:
 
 
 def detect_stance(points: dict[str, Point], *, min_score: float = 0.55) -> dict | None:
-    """Best matching known hold among STANCES. Pure geometry — no generative guess.
+    """Best matching known hold from the reference-chart catalog.
 
-    Scores every stance evaluator that can see the body. Prefers clean form, then
-    higher landmark confidence, then fewer flags. Returns None when nothing is
-    clear enough to name (standing casually, mid-transition, bad framing).
+    Pure geometry — no generative guess. Iterates ``HOLD_CATALOG`` keys only
+    (never CLI aliases like ``ma_bu``). Prefers clean form, then confidence,
+    then fewer flags, then more-specific templates so e.g. horse+guard names
+    ``horse_guard`` instead of plain ``horse``.
     """
+    from chirox.vision.stances import HOLD_CATALOG, template_specificity
+
     best_key = None
     best_reading = None
     best_score = -1.0
-    for key, evaluator in STANCES.items():
+    for key in HOLD_CATALOG:
+        evaluator = STANCES.get(key)
+        if evaluator is None:
+            continue
         reading = evaluator(points)
         if reading.uncertain:
             continue
@@ -442,6 +448,7 @@ def detect_stance(points: dict[str, Point], *, min_score: float = 0.55) -> dict 
             reading.confidence
             + (0.35 if not reading.flags else 0.0)
             - 0.04 * len(reading.flags)
+            + 0.03 * template_specificity(key)
         )
         if score > best_score:
             best_score = score

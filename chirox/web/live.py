@@ -210,12 +210,17 @@ class LiveSession:
                         hit = detect_stance(pts)
                         if hit is not None:
                             reading = STANCES[hit["key"]](pts)
+                            from chirox.web.guides import CHART_TITLES, DRILL_CHARTS
+
+                            chart_n = DRILL_CHARTS.get(hit["key"])
                             meta["free_tag"] = {
                                 "key": hit["key"],
                                 "label": hit["label"],
                                 "confidence": hit["confidence"],
                                 "flags": hit["flags"],
                                 "form_clean": hit["form_clean"],
+                                "chart": chart_n,
+                                "chart_title": CHART_TITLES.get(chart_n) if chart_n else None,
                             }
                         else:
                             # Body visible, no clear named hold yet — do not invent one.

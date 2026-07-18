@@ -3,7 +3,8 @@
 import numpy as np
 
 from chirox.listener import (
-    ChiroxEar, LiveExchangeWitness, SpeechSegmenter, match_wake, route,
+    ChiroxEar, LiveExchangeWitness, SpeechSegmenter, match_wake,
+    parse_record_request, route,
 )
 
 
@@ -71,6 +72,28 @@ def test_route_eight_brocades_routine():
     assert route("ba duan jin please") == "routine_brocades"
     assert route("next phase") == "routine_next"
     assert route("end routine") == "routine_stop"
+
+
+def test_route_voice_recording():
+    assert route("start recording") == "record_start"
+    assert route("record me") == "record_start"
+    assert route("record one legged stance for one minute") == "record_start"
+    assert route("stop recording") == "record_stop"
+    assert route("end recording") == "record_stop"
+
+
+def test_parse_record_request_exercise_and_duration():
+    req = parse_record_request("record one legged stance for one minute")
+    assert req["exercise"] == "one_leg_stand"
+    assert req["stance"] == "one_leg_stand"
+    assert req["seconds"] == 60
+    assert req["matched_exercise"] is True
+    bare = parse_record_request("start recording")
+    assert bare["exercise"] == "free_training"
+    assert bare["seconds"] == 60
+    short = parse_record_request("record horse for thirty seconds")
+    assert short["exercise"] == "horse_stance"
+    assert short["seconds"] == 30
 
 
 def test_route_everything_else_to_master():

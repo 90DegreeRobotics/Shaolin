@@ -61,6 +61,48 @@ _BROCADE_HINTS = [
 ]
 _ROUTINE_NEXT_HINTS = ["next phase", "next brocade", "next movement", "next exercise"]
 _ROUTINE_STOP_HINTS = ["end routine", "seal the routine", "finish brocades", "stop brocades", "seal routine"]
+_RECORD_STOP_HINTS = [
+    "stop recording", "end recording", "finish recording", "cancel recording",
+    "stop the recording", "seal the recording",
+]
+_RECORD_START_HINTS = [
+    "start recording", "begin recording", "record me", "record this",
+    "start a recording", "begin a recording",
+]
+# Longest-first spoken aliases → (catalog key, hold?). Holds get a stance id.
+_RECORD_EXERCISE_ALIASES = [
+    ("one legged stance", "one_leg_stand", True),
+    ("one leg stand", "one_leg_stand", True),
+    ("one legged", "one_leg_stand", True),
+    ("one leg", "one_leg_stand", True),
+    ("horse stance", "horse", True),
+    ("bow stance", "bow", True),
+    ("crane stance", "crane", True),
+    ("drop stance", "drop_stance", True),
+    ("t stance", "t_stance", True),
+    ("wall sit", "wall_sit", True),
+    ("squat hold", "squat_hold", True),
+    ("horse guard", "horse_guard", True),
+    ("wuji standing", "wuji_standing", True),
+    ("wuji", "wuji_standing", True),
+    ("eight brocades", "eight_brocades", False),
+    ("ba duan jin", "eight_brocades", False),
+    ("free training", "free_training", False),
+    ("free train", "free_training", False),
+    ("knee raises", "knee_raises", False),
+    ("jumping jacks", "jumping_jacks", False),
+    ("push ups", "pushups", False),
+    ("pushups", "pushups", False),
+    ("squats", "squats", False),
+    ("plank", "plank", True),
+    ("horse", "horse", True),
+    ("crane", "crane", True),
+    ("bow", "bow", True),
+]
+_WORD_NUMBERS = {
+    "half": 0.5, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
 
 
 def _normalize(text: str) -> str:
@@ -91,6 +133,85 @@ def match_wake(text: str, aliases: list[str] | None = None) -> tuple[bool, str]:
     return False, ""
 
 
+def _record_exercise_id(key: str, is_hold: bool) -> str:
+    if not is_hold:
+        return key
+    if key.endswith("_stance") or "_" in key:
+        return key
+    return f"{key}_stance"
+
+
+def parse_duration_seconds(text: str, default: int = 60) -> int:
+    """Pull a recording length from speech. Default one minute."""
+    import re
+
+    norm = _normalize(text)
+    if "thirty seconds" in norm or "half a minute" in norm or "half minute" in norm:
+        return 30
+    m = re.search(r"(\d+)\s*seconds?", norm)
+    if m:
+        return max(5, int(m.group(1)))
+    m = re.search(r"(\d+)\s*minutes?", norm)
+    if m:
+        return max(5, int(m.group(1)) * 60)
+    m = re.search(r"for\s+(half|one|two|three|four|five|six|seven|eight|nine|ten)\s+minutes?", norm)
+    if m:
+        n = _WORD_NUMBERS[m.group(1)]
+        return max(5, int(n * 60))
+    m = re.search(r"(half|one|two|three|four|five|six|seven|eight|nine|ten)\s+minutes?", norm)
+    if m:
+        n = _WORD_NUMBERS[m.group(1)]
+        return max(5, int(n * 60))
+    return default
+
+
+def parse_record_request(command: str) -> dict:
+    """Parse exercise + duration from a spoken record command. Pure."""
+    norm = _normalize(command)
+    for lead in ("please ", "would you ", "can you "):
+        if norm.startswith(lead):
+            norm = norm[len(lead):]
+    rest = norm
+    for lead in sorted(_RECORD_START_HINTS + ["record"], key=len, reverse=True):
+        if rest == lead:
+            rest = ""
+            break
+        if rest.startswith(lead + " "):
+            rest = rest[len(lead):].strip()
+            break
+    for filler in ("of ", "a ", "an ", "the ", "my "):
+        if rest.startswith(filler):
+            rest = rest[len(filler):]
+    seconds = parse_duration_seconds(rest if rest else norm, default=60)
+    key = "free_training"
+    is_hold = False
+    matched = False
+    haystack = rest or norm
+    for phrase, catalog_key, hold in _RECORD_EXERCISE_ALIASES:
+        if phrase in haystack:
+            # Bare "record me" / "start recording" with no exercise stays free_training.
+            if not rest and catalog_key != "free_training":
+                continue
+            key, is_hold, matched = catalog_key, hold, True
+            break
+    if key == "eight_brocades":
+        exercise = "eight_brocades"
+        stance = None
+    elif key == "free_training":
+        exercise = "free_training"
+        stance = None
+    else:
+        exercise = _record_exercise_id(key, is_hold)
+        stance = key if is_hold else None
+    return {
+        "exercise": exercise,
+        "stance": stance,
+        "seconds": seconds,
+        "label": key.replace("_", " "),
+        "matched_exercise": matched,
+    }
+
+
 def route(command: str) -> str:
     """Classify a spoken command. Pure, testable."""
     norm = _normalize(command)
@@ -108,6 +229,14 @@ def route(command: str) -> str:
         return "routine_next"
     if any(p in norm for p in _BROCADE_HINTS):
         return "routine_brocades"
+    if any(p in norm for p in _RECORD_STOP_HINTS):
+        return "record_stop"
+    if any(norm == p or norm.startswith(p + " ") or p in norm for p in _RECORD_START_HINTS):
+        return "record_start"
+    if norm.startswith("record "):
+        req = parse_record_request(norm)
+        if req["matched_exercise"] or "minute" in norm or "second" in norm:
+            return "record_start"
     if any(p in norm for p in _TRAIN_HINTS):
         return "train"
     if any(p in norm for p in _REFLECT_HINTS):
@@ -718,6 +847,45 @@ class ChiroxEar:
                 )
             else:
                 self._say(res.get("error") or "No routine was active to seal.")
+            return True
+        if kind == "record_stop":
+            res = self._cockpit_post("/api/record/stop", {})
+            if res.get("stopped"):
+                note = res.get("note") or "Recording stopped."
+                self._say(note if "sealed" in note.lower() else
+                          "Recording stopped. Video kept; say start recording when you want another.")
+            else:
+                self._say(res.get("note") or res.get("error") or "Nothing was recording.")
+            return True
+        if kind == "record_start":
+            from chirox.activity import set_mode
+
+            set_mode("training")
+            req = parse_record_request(command)
+            # Do not POST /api/session/start here — that replaces the live
+            # session and drops the Wireguy websocket. begin_recording tees
+            # onto the mirror that is already open.
+            res = self._cockpit_post("/api/record/start", {
+                "exercise": req["exercise"],
+                "source": "0",
+                "seconds": req["seconds"],
+                "stance": req["stance"],
+            })
+            if res.get("ok") is False:
+                self._say(
+                    f"I could not start recording. {res.get('error') or 'unknown error'}. "
+                    "Open the Chirox window so Wireguy is awake."
+                )
+            else:
+                secs = int(req["seconds"])
+                if secs % 60 == 0:
+                    span = f"{secs // 60} minute" + ("s" if secs // 60 != 1 else "")
+                else:
+                    span = f"{secs} seconds"
+                self._say(
+                    f"Recording {req['label']} for {span}. "
+                    "Wireguy stays with you. Say Chirox, stop recording when you are done."
+                )
             return True
         if kind == "reflect":
             self._converse_and_speak(command, reflect=True)

@@ -846,6 +846,26 @@ async function maybeAutoMirror() {
   }
 }
 
+// Interactive machine: the ear wakes with the cockpit so you can speak and be
+// spoken to without hunting for WAKE. ?autostart=0 disables this too.
+async function maybeAutoEar() {
+  if (state.autoMirrorBlocked || state.autoEarInFlight) return;
+  state.autoEarInFlight = true;
+  try {
+    const s = await (await fetch("/api/control/status")).json();
+    if (s.ear && s.ear.running) return;
+    const res = await post("/api/control/wake");
+    if (!res.ok && res.error) {
+      console.warn("Chirox ear did not wake:", res.error);
+    }
+    setTimeout(refreshControl, 1200);
+  } catch (err) {
+    /* Ollama/ear can be woken manually with WAKE */
+  } finally {
+    state.autoEarInFlight = false;
+  }
+}
+
 async function setMode(mode) {
   const data = await post("/api/mode", { mode });
   applyMode(data.mode || mode);
@@ -1478,7 +1498,10 @@ fetch("/api/mode")
 
 loadStatus()
   .catch(() => { $("standing").textContent = "Status unavailable"; })
-  .finally(() => { maybeAutoMirror(); });
+  .finally(() => {
+    maybeAutoMirror();
+    maybeAutoEar();
+  });
 refreshControl();
 refreshLibrary();
 refreshTimeline();

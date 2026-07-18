@@ -367,8 +367,8 @@ def train_start(req: TrainRequest):
 def record_start(req: RecordRequest):
     from chirox.web import control
 
-    manager.stop_all()  # the recorder needs the camera; the mirror yields
-    return control.start_recording(req.exercise, str(req.source), req.seconds, req.stance)
+    # Live-tee: Wireguy keeps the camera so the practitioner still sees themselves.
+    return control.start_recording(req.exercise, str(req.source), req.seconds, req.stance, live=True)
 
 
 @app.post("/api/record/stop")

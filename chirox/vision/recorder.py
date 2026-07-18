@@ -100,6 +100,116 @@ def _video_path(exercise: str, day_number: int, date_str: str) -> Path:
     return folder / f"day{day_number:03d}_{date_str}_{stamp}.mp4"
 
 
+class LiveTeeRecorder:
+    """Write training video from frames the live Wireguy mirror already owns.
+
+    The cockpit keeps the camera; this only tees raw BGR frames (plus motion
+    samples) into the private media archive. Natural completion seals the
+    Codex manifest; an early STOP keeps the video and does not seal.
+    """
+
+    def __init__(self, exercise: str, source: str | int, seconds: float | None,
+                 stance: str | None = None, fps_fallback: int = 20):
+        if stance is not None and stance not in STANCES:
+            raise ValueError(f"unknown stance '{stance}'. Known: {sorted(STANCES)}")
+        self.exercise = exercise
+        self.source = str(source)
+        self.seconds = seconds
+        self.stance = stance
+        self.fps_fallback = fps_fallback
+        self._writer = None
+        self._out_path: Path | None = None
+        self._samples: list[dict] = []
+        self._acc = SessionAccumulator(stance, self.source) if stance else None
+        self._frames_total = 0
+        self._t0: float | None = None
+        self._day_number = 0
+        self._date_str = ""
+        self._finished = False
+        self._result: SessionRecording | None = None
+
+    @property
+    def finished(self) -> bool:
+        return self._finished
+
+    def info(self) -> dict:
+        return {
+            "recording": not self._finished,
+            "exercise": self.exercise,
+            "seconds": self.seconds,
+            "mode": "live",
+            "frames": self._frames_total,
+        }
+
+    def push(self, frame, landmarks, elapsed_s: float | None = None) -> str:
+        """Ingest one BGR frame. Returns ``ok``, ``time_up``, or ``done``."""
+        if self._finished:
+            return "done"
+        import cv2
+
+        if self._writer is None:
+            self._open_writer(frame, cv2)
+        assert self._writer is not None and self._t0 is not None
+        self._frames_total += 1
+        self._writer.write(frame)
+        if landmarks is not None:
+            pts = points_from_landmarks(landmarks)
+            angles = general_joint_angles(pts)
+            conf = sum(p[2] for p in pts.values()) / len(pts)
+            self._samples.append({"confidence": conf, "angles": angles})
+            if self._acc is not None:
+                t = elapsed_s if elapsed_s is not None else (time.perf_counter() - self._t0)
+                self._acc.add(t, STANCES[self.stance](pts))
+        elapsed = time.perf_counter() - self._t0
+        if self.seconds is not None and elapsed >= self.seconds:
+            return "time_up"
+        return "ok"
+
+    def _open_writer(self, frame, cv2) -> None:
+        from chirox.calendar import dojo_day
+        from chirox.config import Config
+
+        config = Config.load()
+        d = dojo_day(config.practice_start_date)
+        self._day_number = d.day_number
+        self._date_str = date.today().isoformat()
+        self._out_path = _video_path(self.exercise, self._day_number, self._date_str)
+        height, width = frame.shape[:2]
+        fps = float(self.fps_fallback)
+        writer = cv2.VideoWriter(
+            str(self._out_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height),
+        )
+        if not writer.isOpened():
+            writer = cv2.VideoWriter(
+                str(self._out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height),
+            )
+        self._writer = writer
+        self._t0 = time.perf_counter()
+
+    def finalize(self, seal: bool = True) -> SessionRecording | None:
+        """Close the writer. Seal only when asked and at least one frame landed."""
+        if self._finished:
+            return self._result
+        self._finished = True
+        duration = 0.0 if self._t0 is None else (time.perf_counter() - self._t0)
+        if self._writer is not None:
+            self._writer.release()
+            self._writer = None
+        if self._out_path is None or self._frames_total == 0:
+            return None
+        stance_summary = (
+            self._acc.finalize(_iso_now(), _iso_now()).payload() if self._acc else None
+        )
+        recording = build_recording(
+            self.exercise, self._date_str, self._day_number, self.source, self._out_path,
+            self._frames_total, duration, self._samples, stance_summary,
+        )
+        if seal:
+            seal_recording(recording)
+        self._result = recording
+        return recording
+
+
 def record_session(exercise: str, source=0, seconds: float | None = None, stance: str | None = None,
                    show: bool = True, seal: bool = True, fps_fallback: int = 20) -> SessionRecording:
     """Record a session to the archive and seal its manifest. Camera integration

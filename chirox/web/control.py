@@ -255,6 +255,11 @@ def _recording_marker():
 
 def recording_status() -> dict:
     """Is a recording running RIGHT NOW — and of what, since when?"""
+    from chirox.web.live import cockpit_manager
+
+    mgr = cockpit_manager()
+    if mgr is not None and mgr.is_recording():
+        return mgr.recording_info()
     marker = _recording_marker()
     if not marker.exists():
         return {"recording": False}
@@ -262,6 +267,7 @@ def recording_status() -> dict:
         info = json.loads(marker.read_text(encoding="utf-8"))
     except Exception:
         return {"recording": False}
+    # Live-tee markers are owned by the cockpit process; CLI markers by a child.
     alive = any(pid == info.get("pid") for pid, _ in list_python_processes())
     if not alive:
         try:
@@ -270,12 +276,18 @@ def recording_status() -> dict:
             pass
         return {"recording": False}
     return {"recording": True, "exercise": info.get("exercise"),
-            "started": info.get("started"), "seconds": info.get("seconds")}
+            "started": info.get("started"), "seconds": info.get("seconds"),
+            "mode": info.get("mode", "cli")}
 
 
 def stop_recording() -> dict:
     """Kill a recording early. Honest consequence: the video file survives but
     the manifest is NOT sealed — an aborted session is not evidence."""
+    from chirox.web.live import cockpit_manager
+
+    mgr = cockpit_manager()
+    if mgr is not None and mgr.is_recording():
+        return mgr.stop_recording(seal=False)
     pids = [pid for pid, cmd in list_python_processes()
             if "chirox.cli" in cmd and "record" in cmd]
     for pid in pids:
@@ -288,12 +300,22 @@ def stop_recording() -> dict:
             "note": "Recording stopped - video kept, manifest not sealed." if pids else "No recording was running."}
 
 
-def start_recording(exercise: str, source: str, seconds: int, stance: str | None) -> dict:
+def start_recording(exercise: str, source: str, seconds: int, stance: str | None,
+                    live: bool = True) -> dict:
+    """Start a recording. Cockpit default is live-tee (Wireguy keeps the camera).
+
+    ``live=False`` keeps the headless CLI recorder for terminal use / tests.
+    """
     from datetime import datetime, timezone
+
+    from chirox.web.live import cockpit_manager
 
     if not exercise.strip():
         return {"ok": False, "error": "exercise name is required"}
     safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in exercise.strip().lower())
+    mgr = cockpit_manager()
+    if live and mgr is not None:
+        return mgr.begin_recording(safe, source, seconds, stance)
     args = ["chirox.cli", "record", "--exercise", safe, "--source", str(source),
             "--seconds", str(seconds), "--no-show"]
     if stance:
@@ -304,8 +326,9 @@ def start_recording(exercise: str, source: str, seconds: int, stance: str | None
     marker.write_text(json.dumps({
         "exercise": safe, "pid": pid, "seconds": seconds,
         "started": datetime.now(timezone.utc).isoformat(),
+        "mode": "cli",
     }), encoding="utf-8")
-    return {"ok": True, "exercise": safe, "pid": pid, "seconds": seconds}
+    return {"ok": True, "exercise": safe, "pid": pid, "seconds": seconds, "mode": "cli"}
 
 
 def _recording_target(file: str) -> Path | None:

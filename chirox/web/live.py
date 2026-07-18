@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import struct
 import time
 from dataclasses import asdict, dataclass
@@ -13,6 +14,14 @@ from typing import Any
 from chirox.vision.multicam import CameraRegistry
 from chirox.vision.pipeline import points_from_landmarks
 from chirox.vision.stances import STANCES
+
+# Cockpit singleton — control.py consults this for live-tee recording status
+# without importing the FastAPI app (circular).
+_COCKPIT_MANAGER: "LiveSessionManager | None" = None
+
+
+def cockpit_manager() -> "LiveSessionManager | None":
+    return _COCKPIT_MANAGER
 
 # Landmarks the cockpit wireframe DRAWS: the full articulated skeleton. Head
 # points (nose + both ears) let the mirror draw a head, a neck, and read head
@@ -148,7 +157,6 @@ class LiveSession:
             yield {"type": "error", "message": str(exc)}
             return
         self._tracker = PoseTracker()
-        evaluator = STANCES[self.config.stance]
         t0 = time.perf_counter()
         frame_index = 0
         try:
@@ -164,9 +172,15 @@ class LiveSession:
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 lm = self._tracker.detect(rgb, elapsed_ms)
 
+                if self._manager is not None:
+                    self._manager.tee_frame(frame, lm, elapsed_s)
+
                 ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
                 if not ok:
                     continue
+                # Re-read stance each frame so RECORD can switch the measured
+                # hold without killing the camera / freezing Wireguy.
+                evaluator = STANCES[self.config.stance]
                 meta: dict[str, Any] = {
                     "type": "frame",
                     "role": self.config.role,
@@ -178,6 +192,7 @@ class LiveSession:
                     "state": "no_body",
                     "routine": None,
                     "free_tag": None,
+                    "recording": bool(self._manager and self._manager.is_recording()),
                 }
 
                 if lm:
@@ -199,11 +214,15 @@ class LiveSession:
 
 class LiveSessionManager:
     def __init__(self):
+        global _COCKPIT_MANAGER
         self._lock = Lock()
         self._sessions: dict[str, LiveSession] = {}
         self._configs: dict[str, SessionConfig] = {"front": SessionConfig(role="front")}
         self._routine = None  # SequenceTracker | None
         self._routine_t0 = 0.0
+        self._tee = None  # LiveTeeRecorder | None
+        self._tee_started: str | None = None
+        _COCKPIT_MANAGER = self
 
     @property
     def config(self) -> SessionConfig:
@@ -278,6 +297,128 @@ class LiveSessionManager:
         from chirox.vision.sequences import free_train_tag
 
         return free_train_tag(points)
+
+    # --- live-tee recording (camera stays with Wireguy) ----------------------
+
+    def is_recording(self) -> bool:
+        with self._lock:
+            return self._tee is not None and not self._tee.finished
+
+    def recording_info(self) -> dict[str, Any]:
+        with self._lock:
+            if self._tee is None or self._tee.finished:
+                return {"recording": False}
+            info = self._tee.info()
+            info["started"] = self._tee_started
+            info["pid"] = os.getpid()
+            return info
+
+    def begin_recording(self, exercise: str, source: str | int, seconds: int,
+                        stance: str | None = None) -> dict[str, Any]:
+        """Attach a file writer to the live mirror — do not steal the camera."""
+        from datetime import datetime, timezone
+
+        from chirox.vision.recorder import LiveTeeRecorder
+
+        safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in exercise.strip().lower())
+        if not safe:
+            return {"ok": False, "error": "exercise name is required"}
+        try:
+            src: int | str = int(source) if str(source).isdigit() else source
+        except (TypeError, ValueError):
+            src = source
+        stance_key = stance if stance in STANCES else None
+        with self._lock:
+            if self._tee is not None and not self._tee.finished:
+                return {"ok": False, "error": "already recording"}
+            try:
+                self._tee = LiveTeeRecorder(safe, src, float(seconds) if seconds else None, stance_key)
+            except ValueError as exc:
+                return {"ok": False, "error": str(exc)}
+            self._tee_started = datetime.now(timezone.utc).isoformat()
+            cfg = self._configs.get("front", SessionConfig(role="front"))
+            new_stance = stance_key or cfg.stance
+            self._configs["front"] = SessionConfig(
+                source=src, stance=new_stance, view_mode=cfg.view_mode, role="front",
+            )
+            # Keep an existing live session's capture; only refresh its config
+            # so the measured stance matches the exercise being recorded.
+            session = self._sessions.get("front")
+            if session is not None:
+                session.config = self._configs["front"]
+            else:
+                self._sessions["front"] = LiveSession(self._configs["front"], manager=self)
+        self._write_recording_marker(safe, seconds)
+        return {
+            "ok": True, "exercise": safe, "seconds": seconds, "mode": "live",
+            "pid": os.getpid(), "started": self._tee_started,
+        }
+
+    def tee_frame(self, frame, landmarks, elapsed_s: float) -> None:
+        with self._lock:
+            tee = self._tee
+        if tee is None or tee.finished:
+            return
+        status = tee.push(frame, landmarks, elapsed_s)
+        if status == "time_up":
+            self._finish_recording(seal=True)
+
+    def stop_recording(self, seal: bool = False) -> dict[str, Any]:
+        return self._finish_recording(seal=seal)
+
+    def _finish_recording(self, seal: bool) -> dict[str, Any]:
+        with self._lock:
+            tee = self._tee
+            self._tee = None
+            self._tee_started = None
+        self._clear_recording_marker()
+        if tee is None:
+            return {"stopped": 0, "note": "No recording was running."}
+        recording = tee.finalize(seal=seal)
+        if recording is None:
+            return {
+                "stopped": 1,
+                "sealed": False,
+                "note": "Recording stopped — no frames were captured.",
+            }
+        if seal:
+            return {
+                "stopped": 1,
+                "sealed": True,
+                "exercise": recording.exercise,
+                "video_path": recording.video_path,
+                "note": "Recording sealed into the Dojo Record.",
+            }
+        return {
+            "stopped": 1,
+            "sealed": False,
+            "exercise": recording.exercise,
+            "video_path": recording.video_path,
+            "note": "Recording stopped - video kept, manifest not sealed.",
+        }
+
+    def _write_recording_marker(self, exercise: str, seconds: int) -> None:
+        from chirox.config import DATA_DIR
+
+        marker = DATA_DIR / "recording_status.json"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({
+            "exercise": exercise,
+            "pid": os.getpid(),
+            "seconds": seconds,
+            "started": self._tee_started,
+            "mode": "live",
+        }), encoding="utf-8")
+
+    @staticmethod
+    def _clear_recording_marker() -> None:
+        from chirox.config import DATA_DIR
+
+        marker = DATA_DIR / "recording_status.json"
+        try:
+            marker.unlink()
+        except OSError:
+            pass
 
     def start_dual(self, front: SessionConfig, side: SessionConfig) -> dict[str, Any]:
         started = [

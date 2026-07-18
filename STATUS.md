@@ -166,7 +166,11 @@ model; and two capabilities remain honestly gated on physical hardware.
     drill sets keep neglect weighting and shuffle order. **Learning Mode** is the
     study surface (Master chat, Piper/Whisper, library, Mandarin, Dojo Record) with
     no training chrome. Multicam remains a measured experiment, not the default path.
-    CSS/JS cache bust is `?v=13`.
+    **Live recording (2026-07-17):** RECORD tees frames from the live Wireguy
+    session — the mirror does not freeze or yield the camera to a headless
+    CLI process. You see yourself and the wireframe while the archive writes;
+    natural completion seals the manifest, STOP keeps the video unsealed.
+    CSS/JS cache bust is `?v=14`.
 - **Voice pipeline hardening (2026-07-16):** Piper download uses timeout +
     atomic write and refuses truncated files; `Voice.preflight()` reports honest
     mouth/ear readiness before the ear greets; the mic queue is bounded (drop-
@@ -176,7 +180,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     `Launch_Chirox_Voice.ps1 -Stop` also kill narrator/trainer organs; self-test
     reports both prompted and live-path (unprompted) STT wake results. Gate 2
     (live mic witness) remains open.
-- `tests/` - 262 passing unit tests as of `python -m pytest tests` on 2026-07-16.
+- `tests/` - 264 passing unit tests as of `python -m pytest tests` on 2026-07-17.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

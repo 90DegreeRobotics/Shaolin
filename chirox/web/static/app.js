@@ -828,16 +828,16 @@ function closePracticePanels() {
   }
 }
 
-// Training mode means training: the webcam comes up by itself unless another
-// organ (trainer, recorder) holds the camera. ?autostart=0 disables.
+// Training mode means training: the webcam comes up by itself unless the
+// spoken trainer holds the camera. Recording tees from the live mirror and
+// must NOT force the Wireguy stage off. ?autostart=0 disables.
 async function maybeAutoMirror() {
   if (state.mode !== "training" || state.running || state.autoMirrorBlocked) return;
   if (state.autoMirrorInFlight) return;
   state.autoMirrorInFlight = true;
   try {
     const s = await (await fetch("/api/control/status")).json();
-    const busy = (s.voice && s.voice.active && s.voice.kind === "training") ||
-                 (s.voice && s.voice.recording);
+    const busy = s.voice && s.voice.active && s.voice.kind === "training";
     if (!busy && state.mode === "training" && !state.running) await mirrorOn();
   } catch (err) {
     /* camera can be retried on the next mode switch */
@@ -1285,7 +1285,10 @@ $("recordGo").addEventListener("click", async () => {
     return;
   }
   const minutes = Number(document.querySelector(".len-chip.sel").dataset.min);
-  if (state.running) await mirrorOff();  // the recorder needs the camera
+  // Keep Wireguy on: recording tees frames from the live session. If the
+  // mirror is idle, wake it so you can see yourself while it saves.
+  if (ex.dataset.stance) state.stance = ex.dataset.stance;
+  if (!state.running) await mirrorOn();
   const res = await post("/api/record/start", {
     exercise: ex.dataset.ex,
     source: state.sources.front,
@@ -1293,8 +1296,9 @@ $("recordGo").addEventListener("click", async () => {
     stance: ex.dataset.stance || null,
   });
   $("recordNote").textContent = res.ok
-    ? `Recording ${ex.textContent} for ${minutes} min — train. It seals itself when done.`
+    ? `Recording ${ex.textContent} for ${minutes} min — Wireguy stays live. It seals when done.`
     : `Could not start: ${res.error}`;
+  closePracticePanels();
   refreshControl();
 });
 

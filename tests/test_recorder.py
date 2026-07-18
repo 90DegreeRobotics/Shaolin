@@ -85,3 +85,19 @@ def test_video_writer_produces_a_real_file(tmp_path):
         writer.write(np.zeros((48, 64, 3), dtype=np.uint8))
     writer.release()
     assert path.exists() and path.stat().st_size > 0
+
+
+def test_live_tee_recorder_writes_without_owning_camera(tmp_path, monkeypatch):
+    pytest.importorskip("cv2")
+    monkeypatch.setattr(recorder, "_video_path",
+                        lambda exercise, day, date_str: tmp_path / f"{exercise}.mp4")
+    tee = recorder.LiveTeeRecorder("crane_hold", "0", seconds=0.01, stance=None, fps_fallback=10)
+    frame = np.zeros((48, 64, 3), dtype=np.uint8)
+    assert tee.push(frame, None, 0.0) == "ok"
+    # Force time-up on the next frame.
+    tee._t0 = 0.0
+    assert tee.push(frame, None, 1.0) == "time_up"
+    rec = tee.finalize(seal=False)
+    assert rec is not None
+    assert rec.frames == 2
+    assert (tmp_path / "crane_hold.mp4").exists()

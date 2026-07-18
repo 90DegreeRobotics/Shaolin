@@ -68,13 +68,29 @@ def test_record_start_requires_exercise_name():
     assert data["ok"] is False
 
 
-def test_record_start_sanitizes_exercise(monkeypatch):
+def test_record_start_live_tees_without_stealing_camera(monkeypatch):
     spawned = []
     monkeypatch.setattr(control, "_spawn", lambda args: spawned.append(args) or 9)
     data = client.post("/api/record/start",
-                       json={"exercise": "Eight Brocades!", "seconds": 60}).json()
+                       json={"exercise": "Eight Brocades!", "seconds": 60,
+                             "stance": "crane"}).json()
     assert data["ok"] is True
     assert data["exercise"] == "eight_brocades_"
+    assert data["mode"] == "live"
+    assert spawned == []  # no headless CLI — Wireguy keeps the camera
+    status = client.get("/api/control/status").json()
+    assert status["voice"]["recording"] is True
+    stopped = client.post("/api/record/stop").json()
+    assert stopped["stopped"] >= 1
+    assert client.get("/api/control/status").json()["voice"]["recording"] is False
+
+
+def test_record_start_cli_fallback_still_spawns(monkeypatch):
+    spawned = []
+    monkeypatch.setattr(control, "_spawn", lambda args: spawned.append(args) or 9)
+    data = control.start_recording("horse_stance", "0", 30, "horse", live=False)
+    assert data["ok"] is True
+    assert data["mode"] == "cli"
     assert "--no-show" in spawned[0]
 
 

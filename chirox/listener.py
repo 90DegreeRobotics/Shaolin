@@ -69,6 +69,15 @@ _RECORD_START_HINTS = [
     "start recording", "begin recording", "record me", "record this",
     "start a recording", "begin a recording",
 ]
+_VERIFY_HINTS = [
+    "how close am i", "how close", "am i in form", "am i matching",
+    "what do you see", "verify me", "verify", "check my form", "check my stance",
+    "score me", "what is my score",
+]
+_VERIFY_SEAL_HINTS = [
+    "seal the match", "seal my form", "seal verification", "seal the verify",
+    "save my score", "seal my score",
+]
 # Longest-first spoken aliases → (catalog key, hold?). Holds get a stance id.
 _RECORD_EXERCISE_ALIASES = [
     ("one legged stance", "one_leg_stand", True),
@@ -244,6 +253,10 @@ def route(command: str) -> str:
         req = parse_record_request(norm)
         if req["matched_exercise"] or "minute" in norm or "second" in norm:
             return "record_start"
+    if any(p in norm for p in _VERIFY_SEAL_HINTS):
+        return "verify_seal"
+    if any(p in norm for p in _VERIFY_HINTS):
+        return "verify_status"
     if any(p in norm for p in _TRAIN_HINTS):
         return "train"
     if any(p in norm for p in _REFLECT_HINTS):
@@ -748,6 +761,20 @@ class ChiroxEar:
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
+    def _cockpit_get(self, path: str) -> dict:
+        import json
+        import urllib.error
+        import urllib.request
+
+        url = f"http://127.0.0.1:8765{path}"
+        try:
+            with urllib.request.urlopen(url, timeout=4) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.URLError as exc:
+            return {"ok": False, "active": False, "error": f"mirror not reachable ({exc.reason})"}
+        except Exception as exc:
+            return {"ok": False, "active": False, "error": str(exc)}
+
     def _converse_and_speak(self, question: str, reflect: bool = False) -> None:
         """Conversation with the Master: streamed sentence by sentence, so speech
         begins with his first sentence, not after his last. The mic stays paused
@@ -863,6 +890,39 @@ class ChiroxEar:
                           "Recording stopped. Video kept; say start recording when you want another.")
             else:
                 self._say(res.get("note") or res.get("error") or "Nothing was recording.")
+            return True
+        if kind == "verify_status":
+            res = self._cockpit_get("/api/verify/status")
+            if not res.get("active"):
+                self._say(res.get("error") or "Open the mirror. Stand a shape. Then ask again.")
+                return True
+            last = (res.get("last") or {}).get("target") or {}
+            label = last.get("label") or res.get("label") or "the shape"
+            if last.get("uncertain"):
+                self._say(f"{label}. Uncertain — I cannot see the joints clearly.")
+                return True
+            score = last.get("score")
+            mean = res.get("mean_score")
+            band = "in band" if last.get("in_band") else "out of band"
+            corr = (last.get("corrections") or [None])[0]
+            parts = [f"{label}: {int(score)} percent, {band}." if score is not None else f"{label}."]
+            if mean is not None:
+                parts.append(f"Session mean {int(mean)}.")
+            if corr and not last.get("in_band"):
+                parts.append(corr)
+            self._say(" ".join(parts))
+            return True
+        if kind == "verify_seal":
+            res = self._cockpit_post("/api/verify/seal", {"source": "0"})
+            if res.get("ok") and res.get("sealed"):
+                s = res.get("summary") or {}
+                mean = s.get("mean_score")
+                self._say(
+                    f"Verification sealed. {s.get('label') or 'Session'}. "
+                    f"Mean {int(mean) if mean is not None else '—'} percent. Forever in the record."
+                )
+            else:
+                self._say(res.get("error") or "Nothing to seal yet. Train first.")
             return True
         if kind == "record_start":
             from chirox.activity import set_mode

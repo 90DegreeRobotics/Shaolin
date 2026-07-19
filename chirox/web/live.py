@@ -203,43 +203,53 @@ class LiveSession:
                     reading = None
                     if self._manager is not None:
                         meta["routine"] = self._manager.push_routine(pts, elapsed_s)
-                    if self.config.stance == AUTO_STANCE:
-                        from chirox.vision.sequences import detect_stance
-                        from chirox.vision.stances import StanceReading
+                    # Reproduction verifier — always score when the body is seen.
+                    from chirox.vision.stances import StanceReading
+                    from chirox.vision.verify import verify_frame
 
-                        hit = detect_stance(pts)
-                        if hit is not None:
-                            reading = STANCES[hit["key"]](pts)
-                            from chirox.web.guides import CHART_TITLES, DRILL_CHARTS
+                    target_key = None if self.config.stance == AUTO_STANCE else self.config.stance
+                    verify = verify_frame(pts, target_key)
+                    meta["verify"] = verify
+                    if self._manager is not None:
+                        meta["match_session"] = self._manager.push_match(verify)
+                    target = verify.get("target")
+                    if target and not target.get("uncertain"):
+                        reading = STANCES[target["key"]](pts)
+                        from chirox.web.guides import CHART_TITLES, DRILL_CHARTS
 
-                            chart_n = DRILL_CHARTS.get(hit["key"])
-                            meta["free_tag"] = {
-                                "key": hit["key"],
-                                "label": hit["label"],
-                                "confidence": hit["confidence"],
-                                "flags": hit["flags"],
-                                "form_clean": hit["form_clean"],
-                                "chart": chart_n,
-                                "chart_title": CHART_TITLES.get(chart_n) if chart_n else None,
-                            }
-                        else:
-                            # Body visible, no clear named hold yet — do not invent one.
-                            vis = [float(getattr(lm[i], "visibility", 0)) for i in (11, 12, 23, 24)]
-                            conf = sum(vis) / len(vis) if vis else 0.0
-                            reading = StanceReading(
-                                "Detecting",
-                                {},
-                                [],
-                                "Watching for a known hold. Stand a shape, or pick one.",
-                                round(conf, 3),
-                                False,
-                            )
+                        chart_n = DRILL_CHARTS.get(target["key"])
+                        meta["free_tag"] = {
+                            "key": target["key"],
+                            "label": target["label"],
+                            "confidence": target["confidence"],
+                            "flags": target["flags"],
+                            "form_clean": target.get("in_band", False),
+                            "score": target.get("score"),
+                            "in_band": target.get("in_band"),
+                            "corrections": target.get("corrections") or [],
+                            "chart": chart_n,
+                            "chart_title": CHART_TITLES.get(chart_n) if chart_n else None,
+                        }
+                    elif target and target.get("uncertain"):
+                        reading = StanceReading(
+                            target.get("label") or "Verify",
+                            {},
+                            list(target.get("flags") or []),
+                            target.get("assessment") or "UNCERTAIN",
+                            float(target.get("confidence") or 0),
+                            True,
+                        )
                     else:
-                        # Locked hold: re-read each frame so RECORD can switch
-                        # without killing the camera / freezing Wireguy.
-                        reading = STANCES[self.config.stance](pts)
-                        if self._manager is not None and meta["routine"] is None:
-                            meta["free_tag"] = self._manager.free_tag(pts)
+                        vis = [float(getattr(lm[i], "visibility", 0)) for i in (11, 12, 23, 24)]
+                        conf = sum(vis) / len(vis) if vis else 0.0
+                        reading = StanceReading(
+                            "Verify",
+                            {},
+                            [],
+                            "Stand a chart hold. Wireguy scores every frame.",
+                            round(conf, 3),
+                            False,
+                        )
                     meta["reading"] = serialize_reading(reading)
                     meta["state"] = "uncertain" if reading.uncertain else "measured"
 
@@ -259,6 +269,7 @@ class LiveSessionManager:
         self._routine_t0 = 0.0
         self._tee = None  # LiveTeeRecorder | None
         self._tee_started: str | None = None
+        self._match = None  # MatchSession | None
         _COCKPIT_MANAGER = self
 
     @property
@@ -283,6 +294,9 @@ class LiveSessionManager:
                 )
             self._configs[role] = config
             self._sessions[role] = LiveSession(config, manager=self)
+            # New mirror / new target — begin a fresh verification ledger.
+            if role == "front":
+                self._match = None
             return {"active": True, "role": role, "config": asdict(config)}
 
     # --- named routines (Eight Brocades etc.) --------------------------------
@@ -334,6 +348,44 @@ class LiveSessionManager:
         from chirox.vision.sequences import free_train_tag
 
         return free_train_tag(points)
+
+    # --- reproduction verifier ----------------------------------------------
+
+    def push_match(self, verify: dict[str, Any]) -> dict[str, Any]:
+        from chirox.vision.verify import MatchSession
+
+        with self._lock:
+            if self._match is None:
+                cfg = self._configs.get("front", SessionConfig(role="front"))
+                auto = cfg.stance == AUTO_STANCE
+                self._match = MatchSession(
+                    target_key=None if auto else cfg.stance,
+                    auto=auto,
+                    label="auto" if auto else cfg.stance,
+                )
+            return self._match.push(verify)
+
+    def match_status(self) -> dict[str, Any]:
+        with self._lock:
+            if self._match is None:
+                return {"active": False}
+            return self._match.status()
+
+    def seal_match(self, source: str = "0") -> dict[str, Any]:
+        from chirox.vision.verify import seal_match_session
+
+        with self._lock:
+            session = self._match
+            self._match = None
+        if session is None or session.frames < 5:
+            return {"ok": False, "error": "no verification session to seal"}
+        summary = session.summary()
+        sealed = seal_match_session(summary, source=source)
+        return {"ok": True, "sealed": True, "summary": summary, "event": sealed}
+
+    def reset_match(self) -> None:
+        with self._lock:
+            self._match = None
 
     # --- live-tee recording (camera stays with Wireguy) ----------------------
 

@@ -187,7 +187,12 @@ model; and two capabilities remain honestly gated on physical hardware.
     scores only catalog keys (no `ma_bu` aliases), prefers specific holds, and
     surfaces chart title in the HUD. New measurable holds from the posters include
     rest stance, half/deep squat, cossack, side plank, standing tree, Superman.
-    CSS/JS cache bust is `?v=19`.
+    **Reproduction verifier (2026-07-18):** `vision/verify.py` scores every frame
+    against chart holds (0–100, IN/OUT band, spoken corrections). AUTO picks the
+    closest target even when the shape is ugly — no silence until pretty. Sessions
+    seal as `match_session` into the Dojo Record (mirror off or voice
+    *"seal the match"*). Voice: *"how close am I?"* / *"check my form"*.
+    CSS/JS cache bust is `?v=20`.
 - **Voice pipeline hardening (2026-07-16):** Piper download uses timeout +
     atomic write and refuses truncated files; `Voice.preflight()` reports honest
     mouth/ear readiness before the ear greets; the mic queue is bounded (drop-
@@ -197,7 +202,7 @@ model; and two capabilities remain honestly gated on physical hardware.
     `Launch_Chirox_Voice.ps1 -Stop` also kill narrator/trainer organs; self-test
     reports both prompted and live-path (unprompted) STT wake results. Gate 2
     (live mic witness) remains open.
-- `tests/` - 269 passing unit tests as of `python -m pytest tests` on 2026-07-18.
+- `tests/` - 275 passing unit tests as of `python -m pytest tests` on 2026-07-18.
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `TRUTH_AUDIT.md`,
   `CURRICULUM_MAP.md`, and `HARDWARE_WITNESS_PROTOCOL.md` now define the
   public contribution, privacy, proof, curriculum, and hardware witness rules.

@@ -275,39 +275,7 @@ class RoutineRequest(BaseModel):
     source: int | str = 0
 
 
-@app.get("/api/routine/catalog")
-def routine_catalog():
-    from chirox.vision.sequences import list_sequences
-
-    return {"routines": list_sequences()}
-
-
-@app.get("/api/routine/status")
-def routine_status():
-    return manager.routine_status()
-
-
-@app.post("/api/routine/start")
-def routine_start(req: RoutineRequest):
-    try:
-        return manager.start_routine(req.routine_key)
-    except ValueError as exc:
-        return {"ok": False, "error": str(exc)}
-
-
-@app.post("/api/routine/next")
-def routine_next():
-    return manager.next_routine_phase()
-
-
-@app.post("/api/routine/stop")
-def routine_stop(req: RoutineRequest):
-    return manager.stop_routine(seal=req.seal, source=str(req.source))
-
-
-class RoutineRequest(BaseModel):
-    routine_key: str = "eight_brocades_ste"
-    seal: bool = True
+class VerifySealRequest(BaseModel):
     source: int | str = 0
 
 
@@ -339,6 +307,18 @@ def routine_next():
 @app.post("/api/routine/stop")
 def routine_stop(req: RoutineRequest):
     return manager.stop_routine(seal=req.seal, source=str(req.source))
+
+
+@app.get("/api/verify/status")
+def verify_status():
+    """Live reproduction score — what Wireguy sees right now."""
+    return manager.match_status()
+
+
+@app.post("/api/verify/seal")
+def verify_seal(req: VerifySealRequest):
+    """Seal the current verification session into the forever Record."""
+    return manager.seal_match(source=str(req.source))
 
 
 @app.get("/api/train/catalog")

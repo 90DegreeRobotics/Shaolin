@@ -593,6 +593,21 @@ def timeline(limit: int = 20) -> list[dict]:
                     f"{totals.get('reps_total', 0)} reps, {totals.get('duration_s', 0)}s"
                 ),
             })
+        elif e.type == "match_session":
+            p = e.payload
+            mean = p.get("mean_score")
+            band = p.get("in_band_ratio")
+            rows.append({
+                "type": "verify",
+                "date": p.get("date") or (p.get("started") or "")[:10],
+                "day": p.get("day_number"),
+                "what": p.get("label") or p.get("target_key") or "verify",
+                "detail": (
+                    f"mean {mean if mean is not None else '—'}, "
+                    f"in-band {int((band or 0) * 100)}%, "
+                    f"best {p.get('best_score') if p.get('best_score') is not None else '—'}"
+                ),
+            })
     return rows[-limit:][::-1]
 
 

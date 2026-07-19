@@ -43,7 +43,7 @@ def test_static_frontend_served():
                    "recordBtn", "pickWorkBtn", "workDrawer", "WAKE", "CALL ME",
                    "routinesCard", "routineList", "hudPhase", "routineNextBtn",
                    "routineStopBtn", "practiceBar", "practice-cluster",
-                   "autoDetectBtn", "Detecting"):
+                   "autoDetectBtn", "Verify"):
         assert element in text, element
     # Practice actions live in the top bar — nothing below the camera stage.
     assert text.index("practiceBar") < text.index("practiceStage")

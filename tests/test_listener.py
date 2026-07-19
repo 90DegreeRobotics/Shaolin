@@ -82,6 +82,14 @@ def test_route_voice_recording():
     assert route("end recording") == "record_stop"
 
 
+def test_route_verify_commands():
+    assert route("how close am i") == "verify_status"
+    assert route("check my form") == "verify_status"
+    assert route("what do you see") == "verify_status"
+    assert route("seal the match") == "verify_seal"
+    assert route("seal my score") == "verify_seal"
+
+
 def test_parse_record_request_exercise_and_duration():
     req = parse_record_request("record one legged stance for one minute")
     assert req["exercise"] == "one_leg_stand"

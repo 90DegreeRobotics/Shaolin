@@ -324,7 +324,7 @@ function formatAngleName(name) {
   return String(name || "").replace(/_/g, " ");
 }
 
-function updateMetricsHud(reading, truthKind) {
+function updateMetricsHud(reading, truthKind, verify) {
   const angles = $("hudAngles");
   const form = $("hudForm");
   const timer = $("hudTimer");
@@ -333,7 +333,7 @@ function updateMetricsHud(reading, truthKind) {
   const now = Date.now();
   if (!state.holdStartedAt) state.holdStartedAt = now;
   const elapsed = Math.max(0, Math.floor((now - state.holdStartedAt) / 1000));
-  timer.textContent = `${elapsed}s hold`;
+  timer.textContent = `${elapsed}s`;
 
   if (!reading || truthKind === "no-body") {
     form.textContent = "no body";
@@ -344,12 +344,17 @@ function updateMetricsHud(reading, truthKind) {
 
   const dt = state.lastFrameAt ? Math.min(0.25, (now - state.lastFrameAt) / 1000) : 0;
   state.lastFrameAt = now;
-  if (truthKind === "measured" && !(reading.flags || []).length) {
-    state.formSeconds += dt;
+  const target = verify && verify.target;
+  if (target && target.in_band) state.formSeconds += dt;
+
+  if (truthKind === "uncertain" || (target && target.uncertain)) {
+    form.textContent = "uncertain";
+  } else if (target && target.score != null) {
+    const band = target.in_band ? "IN" : "OUT";
+    form.textContent = `${Math.round(target.score)}% ${band} · ${Math.floor(state.formSeconds)}s`;
+  } else {
+    form.textContent = `${Math.floor(state.formSeconds)}s in band`;
   }
-  form.textContent = truthKind === "uncertain"
-    ? "uncertain"
-    : `${Math.floor(state.formSeconds)}s in form`;
 
   const metrics = reading.metrics || {};
   const keys = Object.keys(metrics)
@@ -389,17 +394,22 @@ function updateView(role, payload) {
     return;
   }
   const reading = payload.reading;
-  view.conf.textContent = `conf ${Number(reading.confidence || 0).toFixed(2)}`;
-  view.assess.textContent = reading.assessment || "";
-  if (reading.uncertain || payload.state === "uncertain") {
+  const verify = payload.verify;
+  const target = verify && verify.target;
+  view.conf.textContent = target && target.score != null
+    ? `${Math.round(target.score)}%`
+    : `conf ${Number(reading.confidence || 0).toFixed(2)}`;
+  const corrections = (target && target.corrections) || [];
+  view.assess.textContent = corrections[0] || reading.assessment || "";
+  if (reading.uncertain || payload.state === "uncertain" || (target && target.uncertain)) {
     view.lastState = "uncertain";
     view.uncertain += 1;
-    view.msg.textContent = "Uncertain - reframe before trusting numbers.";
-    updateMetricsHud(reading, "uncertain");
+    view.msg.textContent = "Uncertain — reframe. Truth needs visible joints.";
+    updateMetricsHud(reading, "uncertain", verify);
   } else {
     view.lastState = "measured";
     view.msg.textContent = "";
-    updateMetricsHud(reading, "measured");
+    updateMetricsHud(reading, "measured", verify);
   }
 }
 
@@ -444,32 +454,45 @@ function updateRoutineHud(payload) {
     state.routineActive = true;
   } else {
     const tag = payload && payload.free_tag;
+    const verify = payload && payload.verify;
+    const target = verify && verify.target;
     const auto = state.stance === "auto" || (payload && payload.auto);
-    if (tag && tag.label) {
-      const chartBit = tag.chart ? ` · chart ${tag.chart}` : "";
-      phaseEl.textContent = tag.form_clean
-        ? (auto ? `Detected · ${tag.label}${chartBit}` : `Free train · ${tag.label}`)
-        : (auto ? `Detected · ${tag.label}${chartBit} (flags)` : `Free train · ${tag.label} (flags)`);
+    if (target && target.label) {
+      const scoreBit = target.score != null ? ` ${Math.round(target.score)}%` : "";
+      const bandBit = target.uncertain ? " · uncertain" : (target.in_band ? " · IN" : " · OUT");
+      const chartBit = tag && tag.chart ? ` · chart ${tag.chart}` : "";
+      phaseEl.textContent = `${auto ? "Closest" : "Target"} · ${target.label}${scoreBit}${bandBit}${chartBit}`;
       if (auto) {
-        $("guideName").textContent = tag.label;
-        $("trackedStance").textContent = tag.chart_title
-          ? `auto · ${tag.chart_title}`
-          : "auto-detected";
+        $("guideName").textContent = target.label;
+        $("trackedStance").textContent = tag && tag.chart_title
+          ? `verify · ${tag.chart_title}`
+          : "verify · closest chart hold";
+      }
+      const corr = (target.corrections && target.corrections[0]) || "";
+      if (corr && $("guideInstruction") && !target.in_band) {
+        $("guideInstruction").textContent = corr;
+      }
+      if (repsEl) {
+        const sess = payload.match_session;
+        if (sess && sess.mean_score != null) {
+          repsEl.textContent = `mean ${sess.mean_score}%`;
+        } else {
+          repsEl.textContent = target.in_band ? "in band" : "out of band";
+        }
       }
     } else if (!state.routineActive) {
+      phaseEl.textContent = auto
+        ? "Verify — stand a chart hold. Score every frame."
+        : "Target locked — match the shape.";
       if (auto) {
-        phaseEl.textContent = "Detecting — hold a known shape, or pick one.";
-        $("guideName").textContent = "Detecting…";
-        $("trackedStance").textContent = "watching for a known hold";
-      } else {
-        phaseEl.textContent = "No routine — free train or begin Eight Brocades.";
+        $("guideName").textContent = "Verify…";
+        $("trackedStance").textContent = "reproduction score armed";
       }
     }
     if (!routine) {
       if (nextBtn) nextBtn.hidden = true;
       if (stopBtn) stopBtn.hidden = true;
       state.routineActive = false;
-      if (repsEl) repsEl.textContent = "reps —";
     }
   }
 }
@@ -582,6 +605,8 @@ async function mirrorOn() {
 
 async function mirrorOff() {
   ROLES.forEach(closeSocket);
+  // Seal verification numbers into the forever Record when practice ends.
+  await post("/api/verify/seal", { source: state.sources.front }).catch(() => {});
   await post("/api/session/stop").catch(() => {});
   state.running = false;
   state.gotFirstFrame = false;
@@ -590,6 +615,7 @@ async function mirrorOff() {
   ROLES.forEach(resetView);
   resetHoldMetrics();
   setTruth("no-body", "Idle");
+  refreshTimeline();
 }
 
 // --- exercise guide + the Training Hall ---------------------------------------------
@@ -728,10 +754,10 @@ async function setTrackedStance(key, label) {
   }
   state.stance = key;
   if (key === "auto") {
-    $("guideName").textContent = "Detecting…";
-    $("trackedStance").textContent = "watching for a known hold";
+    $("guideName").textContent = "Verify…";
+    $("trackedStance").textContent = "reproduction score armed";
     $("guideInstruction").textContent =
-      "Wireguy watches first. When a known hold is clear, he names it. Pick Work locks a stance.";
+      "Wireguy scores every frame against the chart holds. Pick Work locks a target.";
   } else {
     $("trackedStance").textContent = label || key;
     showGuide(key);
